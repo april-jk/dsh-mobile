@@ -4,6 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme.dart';
 import '../auth/auth_controller.dart';
+import '../update/app_update_prompt.dart';
+import '../update/app_update_service.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -11,6 +13,7 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
+    final installedVersion = ref.watch(installedAppVersionProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
       body: ListView(
@@ -30,10 +33,18 @@ class SettingsPage extends ConsumerWidget {
           _SettingsSection(
             title: '关于',
             children: [
-              const ListTile(
-                leading: Icon(Icons.info_outline_rounded),
-                title: Text('版本'),
-                trailing: Text('0.1.0'),
+              ListTile(
+                leading: const Icon(Icons.system_update_outlined),
+                title: const Text('版本'),
+                subtitle: const Text('点击检查更新'),
+                trailing: Text(
+                  installedVersion.when(
+                    data: (value) => value.displayVersion,
+                    loading: () => '…',
+                    error: (_, _) => '未知',
+                  ),
+                ),
+                onTap: () => checkForAppUpdate(context, ref),
               ),
               ListTile(
                 leading: const Icon(Icons.feedback_outlined),

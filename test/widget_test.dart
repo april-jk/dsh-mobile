@@ -1,6 +1,7 @@
 import 'package:dsh_mobile/app.dart';
 import 'package:dsh_mobile/data/relay_service.dart';
 import 'package:dsh_mobile/data/token_store.dart';
+import 'package:dsh_mobile/features/update/app_update_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,6 +15,7 @@ void main() {
         overrides: [
           tokenStoreProvider.overrideWithValue(MemoryTokenStore()),
           relayServiceProvider.overrideWithValue(MockRelayService()),
+          appUpdateCheckProvider.overrideWith((ref) async => null),
         ],
         child: const DshRemoteApp(),
       ),

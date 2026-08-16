@@ -14,6 +14,8 @@ PODS:
     - Flutter
     - FlutterMacOS
   - OrderedSet (6.0.3)
+  - package_info_plus (0.4.5):
+    - Flutter
   - url_launcher_ios (0.0.1):
     - Flutter
 
@@ -22,6 +24,7 @@ DEPENDENCIES:
   - flutter_inappwebview_ios (from `.symlinks/plugins/flutter_inappwebview_ios/ios`)
   - flutter_secure_storage_darwin (from `.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
   - mobile_scanner (from `.symlinks/plugins/mobile_scanner/darwin`)
+  - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 SPEC REPOS:
@@ -37,6 +40,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_secure_storage_darwin/darwin"
   mobile_scanner:
     :path: ".symlinks/plugins/mobile_scanner/darwin"
+  package_info_plus:
+    :path: ".symlinks/plugins/package_info_plus/ios"
   url_launcher_ios:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
 
@@ -46,6 +51,7 @@ SPEC CHECKSUMS:
   flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
   mobile_scanner: 9157936403f5a0644ca3779a38ff8404c5434a93
   OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
+  package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
 
 PODFILE CHECKSUM: e30f02f9d1c72c47bb6344a0a748c9d268180865

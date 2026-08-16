@@ -5,6 +5,7 @@ import 'core/theme.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/login_page.dart';
 import 'features/devices/device_list_page.dart';
+import 'features/update/app_update_prompt.dart';
 
 class DshRemoteApp extends StatelessWidget {
   const DshRemoteApp({super.key});
@@ -15,7 +16,7 @@ class DshRemoteApp extends StatelessWidget {
       title: 'DSH Remote',
       debugShowCheckedModeBanner: false,
       theme: buildDshTheme(),
-      home: const AuthGate(),
+      home: const AppUpdateCoordinator(child: AuthGate()),
     );
   }
 }
