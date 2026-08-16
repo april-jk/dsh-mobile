@@ -79,6 +79,17 @@ void main() {
       expect(adapter.ticketAuthorization, 'Bearer expired-access');
     },
   );
+
+  test('remove pairing sends authenticated device DELETE', () async {
+    final adapter = _RelayAdapter(acceptExpiredAccess: true);
+    final service = _service(tokenStore, adapter);
+    addTearDown(service.dispose);
+
+    await service.unbindDevice('device-1');
+
+    expect(adapter.unbindMethod, 'DELETE');
+    expect(adapter.unbindAuthorization, 'Bearer expired-access');
+  });
 }
 
 DioRelayService _service(
@@ -103,6 +114,8 @@ class _RelayAdapter implements HttpClientAdapter {
   int refreshCalls = 0;
   String? registerAuthorization;
   String? ticketAuthorization;
+  String? unbindMethod;
+  String? unbindAuthorization;
   final List<String?> deviceAuthorizations = [];
 
   @override
@@ -149,6 +162,10 @@ class _RelayAdapter implements HttpClientAdapter {
       case '/web-ticket':
         ticketAuthorization = options.headers['authorization'] as String?;
         return _json(200, {'ticket': 'ticket-1', 'expiresIn': 60});
+      case '/devices/device-1':
+        unbindMethod = options.method;
+        unbindAuthorization = options.headers['authorization'] as String?;
+        return _json(200, {'ok': true});
       default:
         return _json(404, {'error': 'not_found'});
     }

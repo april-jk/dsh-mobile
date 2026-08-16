@@ -156,8 +156,8 @@ class _DeviceListPageState extends ConsumerState<DeviceListPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('解绑电脑'),
-        content: Text('解绑 ${device.name} 后，需要回到电脑前重新扫码。'),
+        title: const Text('移除配对'),
+        content: Text('移除与 ${device.name} 的配对后，需要回到电脑前重新扫码。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -166,7 +166,7 @@ class _DeviceListPageState extends ConsumerState<DeviceListPage> {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: DshColors.danger),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('解绑'),
+            child: const Text('移除配对'),
           ),
         ],
       ),
@@ -280,7 +280,7 @@ class _DeviceTile extends StatelessWidget {
                     value == 'rename' ? onRename() : onUnbind(),
                 itemBuilder: (_) => const [
                   PopupMenuItem(value: 'rename', child: Text('重命名')),
-                  PopupMenuItem(value: 'unbind', child: Text('解绑')),
+                  PopupMenuItem(value: 'unbind', child: Text('移除配对')),
                 ],
               ),
             ],

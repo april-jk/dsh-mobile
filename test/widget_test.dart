@@ -36,5 +36,17 @@ void main() {
 
     expect(find.text('我的电脑'), findsOneWidget);
     expect(find.text("Watson's MacBook Air"), findsOneWidget);
+
+    await tester.tap(find.byType(PopupMenuButton<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('移除配对'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('移除配对'), findsNWidgets(2));
+    await tester.tap(find.widgetWithText(FilledButton, '移除配对'));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Watson's MacBook Air"), findsNothing);
   });
 }
