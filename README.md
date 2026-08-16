@@ -28,10 +28,10 @@ Use any valid email, a password with at least eight characters, and any six-digi
 
 ## Prepare the computer
 
-Install the local `dsh-mobile` plugin into the DSH web profile, then start DSH:
+Install the `@april-jk/dsh-mobile` plugin into the DSH web profile, then start DSH:
 
 ```bash
-dsh plugin --profile web add "/absolute/path/to/dsh-plugin"
+dsh plugin --profile web add github:april-jk/dsh-mobile-plugin#v0.1.0
 dsh web
 ```
 
@@ -53,8 +53,27 @@ For an Android emulator, use `http://10.0.2.2:8787`. Physical devices need an HT
 dart format --output=none --set-exit-if-changed lib test
 flutter analyze
 flutter test
-flutter build apk --release
+flutter build apk --debug
 flutter build ios --release --no-codesign
 ```
+
+## Android release signing
+
+The Android application ID is `io.github.apriljk.dshremote`. Release builds never fall back to the Android Debug certificate.
+
+Copy `android/key.properties.example` to the ignored `android/key.properties` file and point it at the release keystore, or provide these environment variables in CI:
+
+- `DSH_ANDROID_STORE_FILE`
+- `DSH_ANDROID_STORE_PASSWORD`
+- `DSH_ANDROID_KEY_ALIAS`
+- `DSH_ANDROID_KEY_PASSWORD`
+
+Then build the Play Store bundle:
+
+```bash
+flutter build appbundle --release
+```
+
+Keep the original keystore and passwords in durable secret storage. Android updates must be signed by the same key.
 
 The canonical cross-team contracts are in `../dsh-公共文档/`.

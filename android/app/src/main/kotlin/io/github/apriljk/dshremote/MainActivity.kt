@@ -1,4 +1,4 @@
-package com.deepseek.dsh_mobile
+package io.github.apriljk.dshremote
 
 import io.flutter.embedding.android.FlutterActivity
 

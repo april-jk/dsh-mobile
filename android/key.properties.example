@@ -1,0 +1,5 @@
+# Keep android/key.properties private. Paths are resolved from android/.
+storeFile=keystore/dsh-mobile-release.jks
+storePassword=replace-with-a-secret
+keyAlias=dsh-mobile
+keyPassword=replace-with-a-secret
