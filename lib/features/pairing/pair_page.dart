@@ -280,7 +280,7 @@ class _PairPageState extends ConsumerState<PairPage> {
         Text('输入 6 位配对码', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
         Text(
-          '配对码显示在运行 dsh web 的电脑终端中，5 分钟内有效。',
+          '配对码显示在运行 npx @deepseek-ai/dsh web 的电脑终端中，5 分钟内有效。',
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: DshColors.secondaryText),

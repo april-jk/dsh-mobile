@@ -269,13 +269,13 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
           _SessionViewState.deviceOffline => _SessionError(
             icon: Icons.computer_outlined,
             title: '电脑不在线',
-            message: '请确认电脑端已运行 dsh web，dsh-mobile 会随它自动启停。',
+            message: '请确认电脑端已运行 npx @deepseek-ai/dsh web，dsh-mobile 会随它自动启停。',
             onRetry: _reload,
           ),
           _SessionViewState.dshOffline => _SessionError(
             icon: Icons.power_settings_new_rounded,
             title: 'DSH 未启动',
-            message: '电脑已在线，请在电脑上运行 dsh web。',
+            message: '电脑已在线，请在电脑上运行 npx @deepseek-ai/dsh web。',
             onRetry: _reload,
           ),
           _SessionViewState.tunnelTimeout => _SessionError(

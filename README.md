@@ -48,11 +48,11 @@ Use any valid email, a password with at least eight characters, and any six-digi
 Install the `@april-jk/dsh-mobile` plugin into the DSH web profile, then start DSH:
 
 ```bash
-dsh plugin --profile web add github:april-jk/dsh-mobile-plugin#v0.1.2
-dsh web
+npx @deepseek-ai/dsh plugin --profile web add "github:april-jk/dsh-mobile-plugin#v0.1.2"
+npx @deepseek-ai/dsh web
 ```
 
-The Companion follows the `dsh web` lifecycle. It does not need to be run as a separate background process.
+The Companion follows the DSH Web process lifecycle. It does not need to be run as a separate background process.
 
 ## Pair and open DSH remotely
 
@@ -73,7 +73,7 @@ flutter run \
 
 For an Android emulator, use `http://10.0.2.2:8787`. Physical devices need an HTTPS Relay or a development hostname reachable from the device. Production builds must use HTTPS.
 
-Public builds can connect to a private Relay without recompilation. Before login, tap the **Relay** server button, or open **Settings > Relay 服务器** after login, and enter the Relay's HTTPS origin. Start the computer with the matching origin, for example `DSH_RELAY=https://relay.example.com dsh web`. Changing Relay logs out the current account because tokens belong to the previous server.
+Public builds can connect to a private Relay without recompilation. Before login, tap the **Relay** server button, or open **Settings > Relay 服务器** after login, and enter the Relay's HTTPS origin. Start the computer with the matching origin, for example `DSH_RELAY=https://relay.example.com npx @deepseek-ai/dsh web`. Changing Relay logs out the current account because tokens belong to the previous server.
 
 ## Verification
 

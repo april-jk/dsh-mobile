@@ -48,11 +48,11 @@ flutter run --dart-define=DSH_USE_MOCK=true
 将 `@april-jk/dsh-mobile` 插件安装到 DSH Web profile，然后启动 DSH：
 
 ```bash
-dsh plugin --profile web add github:april-jk/dsh-mobile-plugin#v0.1.2
-dsh web
+npx @deepseek-ai/dsh plugin --profile web add "github:april-jk/dsh-mobile-plugin#v0.1.2"
+npx @deepseek-ai/dsh web
 ```
 
-Companion 随 `dsh web` 启停，不需要单独运行后台进程。
+Companion 随 DSH Web 进程启停，不需要单独运行后台进程。
 
 ## 配对并远程打开 DSH
 
@@ -73,7 +73,7 @@ flutter run \
 
 Android 模拟器请使用 `http://10.0.2.2:8787`。实体设备需要 HTTPS Relay，或设备能够访问的开发域名。生产构建必须使用 HTTPS。
 
-公开构建无需重新编译即可连接私有 Relay。登录前点击 **Relay** 服务器按钮，或登录后打开 **设置 > Relay 服务器**，输入 Relay 的 HTTPS Origin。电脑端必须使用相同地址，例如 `DSH_RELAY=https://relay.example.com dsh web`。切换 Relay 会退出当前账号，因为 Token 属于原来的服务器。
+公开构建无需重新编译即可连接私有 Relay。登录前点击 **Relay** 服务器按钮，或登录后打开 **设置 > Relay 服务器**，输入 Relay 的 HTTPS Origin。电脑端必须使用相同地址，例如 `DSH_RELAY=https://relay.example.com npx @deepseek-ai/dsh web`。切换 Relay 会退出当前账号，因为 Token 属于原来的服务器。
 
 ## 验证
 
