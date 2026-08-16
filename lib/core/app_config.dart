@@ -1,8 +1,7 @@
 class AppConfig {
   const AppConfig({required this.relayBaseUrl, required this.useMock});
 
-  static const productionRelayUrl =
-      'https://dsh-relay-production.up.railway.app';
+  static const productionRelayUrl = 'https://relay.dshmobile.online';
 
   factory AppConfig.fromEnvironment({String? savedRelayUrl}) {
     final config = AppConfig(

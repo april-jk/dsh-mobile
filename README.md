@@ -25,7 +25,7 @@ The APK uses application ID `io.github.apriljk.dshremote`. Verify the downloaded
 
 ## Run with the production Relay
 
-The default build connects to the deployed HTTPS Relay:
+The default build connects to `https://relay.dshmobile.online`:
 
 ```bash
 flutter run
@@ -46,7 +46,7 @@ Use any valid email, a password with at least eight characters, and any six-digi
 Install the `@april-jk/dsh-mobile` plugin into the DSH web profile, then start DSH:
 
 ```bash
-dsh plugin --profile web add github:april-jk/dsh-mobile-plugin#v0.1.1
+dsh plugin --profile web add github:april-jk/dsh-mobile-plugin#v0.1.2
 dsh web
 ```
 
@@ -101,8 +101,6 @@ flutter build appbundle --release
 ```
 
 Keep the original keystore and passwords in durable secret storage. Android updates must be signed by the same key.
-
-The canonical cross-team contracts are in `../dsh-公共文档/`.
 
 ## License
 
