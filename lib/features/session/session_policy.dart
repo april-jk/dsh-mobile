@@ -1,5 +1,33 @@
 import '../../domain/models.dart';
 
+const dshMobileFontCss = '''
+:root {
+  --dsw-font-family: "PingFang SC", "Apple Color Emoji", "Apple Symbols", -apple-system, BlinkMacSystemFont, "Hiragino Sans GB", sans-serif !important;
+  --ds-font-family-code: "SF Mono", "PingFang SC", "Apple Color Emoji", Menlo, monospace !important;
+}
+html, body, button, input, textarea, select {
+  font-family: var(--dsw-font-family) !important;
+}
+code, pre, kbd, samp {
+  font-family: var(--ds-font-family-code) !important;
+}
+''';
+
+String dshFontBootstrapScript() {
+  final css = dshMobileFontCss
+      .replaceAll(r'\', r'\\')
+      .replaceAll('`', r'\`')
+      .replaceAll(r'${', r'\${');
+  return '''
+(() => {
+  const style = document.createElement('style');
+  style.id = 'dsh-mobile-font-fallback';
+  style.textContent = `$css`;
+  (document.head || document.documentElement).appendChild(style);
+})();
+''';
+}
+
 enum SessionNavigation { relay, external, blocked }
 
 enum SessionHttpAction {

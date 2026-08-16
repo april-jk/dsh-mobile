@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -36,6 +37,8 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
   _SessionViewState _state = _SessionViewState.loading;
   bool _renewingTicket = false;
   final _ticketRenewalGuard = TicketRenewalGuard();
+  DateTime? _webLoadStartedAt;
+  bool _readyReported = false;
   int _progress = 0;
 
   @override
@@ -78,6 +81,8 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
         _state = _SessionViewState.webView;
         _progress = 0;
         _ticketRenewalGuard.reset();
+        _webLoadStartedAt = DateTime.now();
+        _readyReported = false;
       });
     } catch (_) {
       if (mounted) setState(() => _state = _SessionViewState.failed);
@@ -133,6 +138,8 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
         ticket.ticket,
       );
       _sessionUrl = url;
+      _webLoadStartedAt = DateTime.now();
+      _readyReported = false;
       await _controller?.loadUrl(
         urlRequest: URLRequest(url: WebUri(url.toString())),
       );
@@ -216,7 +223,7 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
   }
 
   Future<void> _injectAdaptationCss() async {
-    // Reserved for narrow-screen DSH patches distributed in a later release.
+    await _controller?.injectCSSCode(source: dshMobileFontCss);
   }
 
   @override
@@ -295,9 +302,17 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
     if (url == null) return const _SessionSkeleton();
     return InAppWebView(
       initialUrlRequest: URLRequest(url: WebUri(url.toString())),
+      initialUserScripts: UnmodifiableListView([
+        UserScript(
+          source: dshFontBootstrapScript(),
+          injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+        ),
+      ]),
       initialSettings: InAppWebViewSettings(
         javaScriptEnabled: true,
         domStorageEnabled: true,
+        cacheEnabled: true,
+        cacheMode: CacheMode.LOAD_DEFAULT,
         useShouldOverrideUrlLoading: true,
         supportZoom: false,
         mediaPlaybackRequiresUserGesture: false,
@@ -310,6 +325,7 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
       onLoadStop: (_, _) async {
         if (mounted) setState(() => _progress = 100);
         await _injectAdaptationCss();
+        _reportWebViewReady();
       },
       onReceivedHttpError: (_, request, response) =>
           _handleHttpError(request, response),
@@ -336,6 +352,16 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
         return false;
       },
     );
+  }
+
+  void _reportWebViewReady() {
+    final startedAt = _webLoadStartedAt;
+    if (_readyReported || startedAt == null) return;
+    _readyReported = true;
+    ref.read(analyticsProvider).track('session_webview_ready', {
+      'deviceId': widget.device.id,
+      'milliseconds': DateTime.now().difference(startedAt).inMilliseconds,
+    });
   }
 }
 

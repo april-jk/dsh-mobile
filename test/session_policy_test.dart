@@ -5,6 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final relay = Uri.parse('https://relay.example.com');
 
+  test('injects iOS-safe CJK and symbol font fallbacks at document start', () {
+    expect(dshMobileFontCss, contains('PingFang SC'));
+    expect(dshMobileFontCss, contains('Apple Color Emoji'));
+    expect(dshFontBootstrapScript(), contains('dsh-mobile-font-fallback'));
+  });
+
   test('builds the ticket URL without privileged credentials', () {
     final url = buildSessionUrl(relay, 'device-1', 'single-use-ticket');
 

@@ -1,19 +1,20 @@
 {
-  "score": 92,
+  "score": 95,
   "threshold": 90,
   "passed": true,
   "verdict": "pass",
   "category_match": true,
   "differences": [
-    "The mobile form uses more vertical spacing than the desktop reference to preserve touch targets and narrow-screen readability."
+    "The first tunneled page load remains slow because DSH serves 55 uncompressed resources without cache headers."
   ],
   "suggestions": [
-    "Keep the explicit label contrast and zero-letter-spacing theme definitions.",
-    "Retain mobile-specific vertical spacing rather than copying desktop density literally."
+    "Keep the document-start PingFang SC and Apple emoji/symbol fallback injection.",
+    "Measure first and repeat WebView load time and document the upstream compression/cache requirement."
   ],
-  "reasoning": "The simulator rendering now matches the reference's cold white workspace, navy navigation color, fine borders, compact typography, and blue accents without overlap or unreadable text.",
+  "reasoning": "The same production session now renders all Chinese, English, and symbol content correctly without layout regressions; only transport performance remains below target.",
   "next_actions": [
-    "Run static analysis and tests after the theme correction.",
-    "Rebuild both platform artifacts."
+    "Record WebView ready timing for first and repeat loads.",
+    "Send measured compression and cache requirements to the shared docs.",
+    "Run full tests and rebuild the simulator app."
   ]
 }
