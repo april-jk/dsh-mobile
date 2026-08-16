@@ -62,15 +62,23 @@ class Device {
 }
 
 class PairPayload {
-  const PairPayload({required this.code, this.relay});
+  const PairPayload({required this.code, required this.e2eeKey, this.relay});
 
   final String code;
+  final String e2eeKey;
   final Uri? relay;
 }
 
 class WebTicket {
-  const WebTicket({required this.ticket, required this.expiresIn});
+  const WebTicket({
+    required this.ticket,
+    required this.expiresIn,
+    required this.accessSessionId,
+    required this.tunnelUrl,
+  });
 
   final String ticket;
   final int expiresIn;
+  final String accessSessionId;
+  final Uri tunnelUrl;
 }

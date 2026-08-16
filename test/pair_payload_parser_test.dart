@@ -3,22 +3,23 @@ import 'package:dsh_mobile/features/pairing/pair_payload_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('parses a v1 QR payload', () {
+  test('parses a v2 QR payload with a 256-bit E2EE key', () {
     final payload = parsePairPayload(
-      '{"v":1,"relay":"https://relay.example.com","code":"482913"}',
+      '{"v":2,"relay":"https://relay.example.com","code":"482913","e2eeKey":"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"}',
     );
 
     expect(payload.code, '482913');
     expect(payload.relay?.host, 'relay.example.com');
+    expect(payload.e2eeKey, hasLength(43));
   });
 
-  test('accepts a manual six-digit code', () {
-    expect(parsePairPayload('482913').code, '482913');
+  test('rejects a manual six-digit code', () {
+    expect(() => parsePairPayload('482913'), throwsA(isA<ApiException>()));
   });
 
   test('rejects unsupported payloads', () {
     expect(
-      () => parsePairPayload('{"v":2,"code":"482913"}'),
+      () => parsePairPayload('{"v":1,"code":"482913"}'),
       throwsA(isA<ApiException>()),
     );
   });

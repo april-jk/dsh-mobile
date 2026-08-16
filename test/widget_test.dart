@@ -1,4 +1,5 @@
 import 'package:dsh_mobile/app.dart';
+import 'package:dsh_mobile/data/device_key_store.dart';
 import 'package:dsh_mobile/data/relay_service.dart';
 import 'package:dsh_mobile/data/token_store.dart';
 import 'package:dsh_mobile/features/update/app_update_service.dart';
@@ -13,6 +14,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          deviceKeyStoreProvider.overrideWithValue(MemoryDeviceKeyStore()),
           tokenStoreProvider.overrideWithValue(MemoryTokenStore()),
           relayServiceProvider.overrideWithValue(MockRelayService()),
           appUpdateCheckProvider.overrideWith((ref) async => null),

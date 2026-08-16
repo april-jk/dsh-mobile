@@ -7,6 +7,7 @@ import '../../core/analytics.dart';
 import '../../core/api_exception.dart';
 import '../../core/theme.dart';
 import '../../data/relay_service.dart';
+import '../../data/device_key_store.dart';
 import '../devices/device_controller.dart';
 import 'pair_payload_parser.dart';
 
@@ -54,6 +55,7 @@ class _PairPageState extends ConsumerState<PairPage> {
       final deviceId = await ref
           .read(relayServiceProvider)
           .claimPair(payload.code);
+      await ref.read(deviceKeyStoreProvider).write(deviceId, payload.e2eeKey);
       if (!mounted) return;
       setState(() {
         _claimedDeviceId = deviceId;
@@ -109,12 +111,7 @@ class _PairPageState extends ConsumerState<PairPage> {
   }
 
   Future<void> _submitManualCode() async {
-    final code = _codeController.text;
-    if (code.length != 6) {
-      setState(() => _error = '请输入完整的 6 位配对码。');
-      return;
-    }
-    await _handleRawValue(code);
+    setState(() => _error = '0.1.3 为保证端到端加密，只支持扫描电脑上的二维码。');
   }
 
   void _onDetect(BarcodeCapture capture) {

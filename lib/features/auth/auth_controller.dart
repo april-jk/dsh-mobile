@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_exception.dart';
 import '../../data/relay_service.dart';
 import '../../data/token_store.dart';
+import '../../data/device_key_store.dart';
 
 enum AuthStatus { initializing, unauthenticated, authenticated }
 
@@ -44,6 +45,7 @@ final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
     final controller = AuthController(
       service: ref.watch(relayServiceProvider),
       tokenStore: ref.watch(tokenStoreProvider),
+      deviceKeyStore: ref.watch(deviceKeyStoreProvider),
     );
     Future<void>.microtask(controller.bootstrap);
     return controller;
@@ -51,8 +53,11 @@ final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
 );
 
 class AuthController extends StateNotifier<AuthState> {
-  AuthController({required this.service, required this.tokenStore})
-    : super(const AuthState.initializing()) {
+  AuthController({
+    required this.service,
+    required this.tokenStore,
+    this.deviceKeyStore,
+  }) : super(const AuthState.initializing()) {
     _sessionExpiredSubscription = service.sessionExpired.listen((_) {
       unawaited(_expireSession());
     });
@@ -60,6 +65,7 @@ class AuthController extends StateNotifier<AuthState> {
 
   final RelayService service;
   final TokenStore tokenStore;
+  final DeviceKeyStore? deviceKeyStore;
   late final StreamSubscription<void> _sessionExpiredSubscription;
 
   @override
@@ -70,6 +76,7 @@ class AuthController extends StateNotifier<AuthState> {
 
   Future<void> _expireSession() async {
     await tokenStore.clear();
+    await deviceKeyStore?.clear();
     if (!mounted) return;
     state = const AuthState(
       status: AuthStatus.unauthenticated,
@@ -90,6 +97,7 @@ class AuthController extends StateNotifier<AuthState> {
       state = AuthState(status: AuthStatus.authenticated, email: email);
     } catch (_) {
       await tokenStore.clear();
+      await deviceKeyStore?.clear();
       state = const AuthState(status: AuthStatus.unauthenticated);
     }
   }
@@ -124,6 +132,7 @@ class AuthController extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await tokenStore.clear();
+    await deviceKeyStore?.clear();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 }

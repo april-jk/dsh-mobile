@@ -203,6 +203,8 @@ class DioRelayService implements RelayService {
     return WebTicket(
       ticket: response.data!['ticket'] as String,
       expiresIn: response.data!['expiresIn'] as int? ?? 60,
+      accessSessionId: response.data!['accessSessionId'] as String,
+      tunnelUrl: Uri.parse(response.data!['tunnelUrl'] as String),
     );
   });
 }
@@ -299,6 +301,12 @@ class MockRelayService implements RelayService {
   }
 
   @override
-  Future<WebTicket> createWebTicket(String deviceId) =>
-      _delay(const WebTicket(ticket: 'mock-ticket', expiresIn: 60));
+  Future<WebTicket> createWebTicket(String deviceId) => _delay(
+    WebTicket(
+      ticket: 'mock-ticket',
+      expiresIn: 60,
+      accessSessionId: 'access-mock',
+      tunnelUrl: Uri.parse('ws://127.0.0.1/client-tunnel'),
+    ),
+  );
 }

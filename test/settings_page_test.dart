@@ -1,4 +1,5 @@
 import 'package:dsh_mobile/data/relay_service.dart';
+import 'package:dsh_mobile/data/device_key_store.dart';
 import 'package:dsh_mobile/data/token_store.dart';
 import 'package:dsh_mobile/data/relay_config_store.dart';
 import 'package:dsh_mobile/features/auth/auth_controller.dart';
@@ -15,6 +16,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          deviceKeyStoreProvider.overrideWithValue(MemoryDeviceKeyStore()),
           tokenStoreProvider.overrideWithValue(MemoryTokenStore()),
           relayServiceProvider.overrideWithValue(MockRelayService()),
           installedAppVersionProvider.overrideWith(
@@ -36,6 +38,7 @@ void main() {
     final relayStore = MemoryRelayConfigStore();
     final container = ProviderContainer(
       overrides: [
+        deviceKeyStoreProvider.overrideWithValue(MemoryDeviceKeyStore()),
         tokenStoreProvider.overrideWithValue(MemoryTokenStore()),
         relayConfigStoreProvider.overrideWithValue(relayStore),
         relayServiceProvider.overrideWithValue(MockRelayService()),

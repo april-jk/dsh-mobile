@@ -76,6 +76,8 @@ void main() {
       final ticket = await service.createWebTicket('device-1');
 
       expect(ticket.ticket, 'ticket-1');
+      expect(ticket.accessSessionId, 'access-1');
+      expect(ticket.tunnelUrl.path, '/client-tunnel');
       expect(adapter.ticketAuthorization, 'Bearer expired-access');
     },
   );
@@ -161,7 +163,13 @@ class _RelayAdapter implements HttpClientAdapter {
         return _json(401, {'error': 'invalid_access_token'});
       case '/web-ticket':
         ticketAuthorization = options.headers['authorization'] as String?;
-        return _json(200, {'ticket': 'ticket-1', 'expiresIn': 60});
+        return _json(200, {
+          'ticket': 'ticket-1',
+          'expiresIn': 60,
+          'accessSessionId': 'access-1',
+          'tunnelUrl': 'wss://relay.example.com/client-tunnel',
+          'e2eeRequired': true,
+        });
       case '/devices/device-1':
         unbindMethod = options.method;
         unbindAuthorization = options.headers['authorization'] as String?;

@@ -28,7 +28,7 @@ String dshFontBootstrapScript() {
 ''';
 }
 
-enum SessionNavigation { relay, external, blocked }
+enum SessionNavigation { session, external, blocked }
 
 enum SessionHttpAction {
   ignore,
@@ -50,21 +50,14 @@ class TicketRenewalGuard {
   void reset() => _used = false;
 }
 
-Uri buildSessionUrl(Uri relayOrigin, String deviceId, String ticket) {
-  return relayOrigin.replace(
-    path: '/s/$deviceId/',
-    queryParameters: {'ticket': ticket},
-  );
+bool isSameOrigin(Uri uri, Uri sessionOrigin) {
+  return uri.scheme == sessionOrigin.scheme &&
+      uri.host == sessionOrigin.host &&
+      _effectivePort(uri) == _effectivePort(sessionOrigin);
 }
 
-bool isSameOrigin(Uri uri, Uri relayOrigin) {
-  return uri.scheme == relayOrigin.scheme &&
-      uri.host == relayOrigin.host &&
-      _effectivePort(uri) == _effectivePort(relayOrigin);
-}
-
-SessionNavigation classifySessionNavigation(Uri uri, Uri relayOrigin) {
-  if (isSameOrigin(uri, relayOrigin)) return SessionNavigation.relay;
+SessionNavigation classifySessionNavigation(Uri uri, Uri sessionOrigin) {
+  if (isSameOrigin(uri, sessionOrigin)) return SessionNavigation.session;
   if (const {'http', 'https', 'mailto'}.contains(uri.scheme)) {
     return SessionNavigation.external;
   }

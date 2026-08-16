@@ -7,9 +7,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/analytics.dart';
+import '../../core/api_exception.dart';
 import '../../core/theme.dart';
+import '../../data/device_key_store.dart';
 import '../../data/relay_service.dart';
 import '../../domain/models.dart';
+import 'local_session_proxy.dart';
 import 'session_policy.dart';
 
 enum _SessionViewState {
@@ -18,6 +21,7 @@ enum _SessionViewState {
   deviceOffline,
   dshOffline,
   tunnelTimeout,
+  encryptionRequired,
   failed,
 }
 
@@ -34,6 +38,7 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
   final _openedAt = DateTime.now();
   InAppWebViewController? _controller;
   Uri? _sessionUrl;
+  LocalSessionProxy? _proxy;
   _SessionViewState _state = _SessionViewState.loading;
   bool _renewingTicket = false;
   final _ticketRenewalGuard = TicketRenewalGuard();
@@ -53,7 +58,43 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
       'deviceId': widget.device.id,
       'seconds': DateTime.now().difference(_openedAt).inSeconds,
     });
+    unawaited(_proxy?.close());
     super.dispose();
+  }
+
+  Future<Uri> _createSecureSession() async {
+    final key = await ref.read(deviceKeyStoreProvider).read(widget.device.id);
+    if (key == null) {
+      throw const ApiException('e2ee_required', message: '这台电脑需要重新扫码以建立加密密钥。');
+    }
+    final ticket = await ref
+        .read(relayServiceProvider)
+        .createWebTicket(widget.device.id);
+    final previous = _proxy;
+    _proxy = null;
+    await previous?.close();
+    final proxy = await LocalSessionProxy.start(ticket: ticket, masterKey: key);
+    if (!mounted) {
+      await proxy.close();
+      throw StateError('session page disposed');
+    }
+    _proxy = proxy;
+    return proxy.startUrl;
+  }
+
+  void _showOpenError(Object error) {
+    if (!mounted) return;
+    final state = error is ApiException
+        ? switch (error.code) {
+            'e2ee_required' ||
+            'e2ee_pairing_required' => _SessionViewState.encryptionRequired,
+            'device_offline' => _SessionViewState.deviceOffline,
+            'dsh_offline' => _SessionViewState.dshOffline,
+            'tunnel_timeout' => _SessionViewState.tunnelTimeout,
+            _ => _SessionViewState.failed,
+          }
+        : _SessionViewState.failed;
+    setState(() => _state = state);
   }
 
   Future<void> _openSession() async {
@@ -67,14 +108,7 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
       return;
     }
     try {
-      final ticket = await ref
-          .read(relayServiceProvider)
-          .createWebTicket(widget.device.id);
-      final url = buildSessionUrl(
-        config.relayOrigin,
-        widget.device.id,
-        ticket.ticket,
-      );
+      final url = await _createSecureSession();
       if (!mounted) return;
       setState(() {
         _sessionUrl = url;
@@ -84,8 +118,8 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
         _webLoadStartedAt = DateTime.now();
         _readyReported = false;
       });
-    } catch (_) {
-      if (mounted) setState(() => _state = _SessionViewState.failed);
+    } catch (error) {
+      _showOpenError(error);
     }
   }
 
@@ -128,23 +162,15 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
     }
     _renewingTicket = true;
     try {
-      final ticket = await ref
-          .read(relayServiceProvider)
-          .createWebTicket(widget.device.id);
-      final config = ref.read(appConfigProvider);
-      final url = buildSessionUrl(
-        config.relayOrigin,
-        widget.device.id,
-        ticket.ticket,
-      );
+      final url = await _createSecureSession();
       _sessionUrl = url;
       _webLoadStartedAt = DateTime.now();
       _readyReported = false;
       await _controller?.loadUrl(
         urlRequest: URLRequest(url: WebUri(url.toString())),
       );
-    } catch (_) {
-      _showState(_SessionViewState.failed);
+    } catch (error) {
+      _showOpenError(error);
     } finally {
       _renewingTicket = false;
     }
@@ -165,11 +191,10 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
     final url = navigationAction.request.url;
     if (url == null) return NavigationActionPolicy.CANCEL;
     final uri = Uri.parse(url.toString());
-    return switch (classifySessionNavigation(
-      uri,
-      ref.read(appConfigProvider).relayOrigin,
-    )) {
-      SessionNavigation.relay => NavigationActionPolicy.ALLOW,
+    final localOrigin = _proxy?.origin;
+    if (localOrigin == null) return NavigationActionPolicy.CANCEL;
+    return switch (classifySessionNavigation(uri, localOrigin)) {
+      SessionNavigation.session => NavigationActionPolicy.ALLOW,
       SessionNavigation.external => _openExternal(uri),
       SessionNavigation.blocked => NavigationActionPolicy.CANCEL,
     };
@@ -284,6 +309,12 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
             message: 'Relay 等待电脑响应超时，请检查网络后重试。',
             onRetry: _reload,
           ),
+          _SessionViewState.encryptionRequired => _SessionError(
+            icon: Icons.qr_code_2_rounded,
+            title: '需要重新扫码',
+            message: '0.1.3 已启用端到端加密，请移除旧配对后扫描电脑上的新二维码。',
+            onRetry: _reload,
+          ),
           _SessionViewState.failed => _SessionError(
             icon: Icons.cloud_off_outlined,
             title: '暂时无法连接',
@@ -338,11 +369,10 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
         final rawUrl = action.request.url;
         if (rawUrl == null) return false;
         final uri = Uri.parse(rawUrl.toString());
-        switch (classifySessionNavigation(
-          uri,
-          ref.read(appConfigProvider).relayOrigin,
-        )) {
-          case SessionNavigation.relay:
+        final localOrigin = _proxy?.origin;
+        if (localOrigin == null) return false;
+        switch (classifySessionNavigation(uri, localOrigin)) {
+          case SessionNavigation.session:
             await controller.loadUrl(urlRequest: URLRequest(url: rawUrl));
           case SessionNavigation.external:
             await launchUrl(uri, mode: LaunchMode.externalApplication);

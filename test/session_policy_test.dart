@@ -3,7 +3,7 @@ import 'package:dsh_mobile/domain/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final relay = Uri.parse('https://relay.example.com');
+  final sessionOrigin = Uri.parse('http://127.0.0.1:49152');
 
   test('injects iOS-safe CJK and symbol font fallbacks at document start', () {
     expect(dshMobileFontCss, contains('PingFang SC'));
@@ -11,25 +11,19 @@ void main() {
     expect(dshFontBootstrapScript(), contains('dsh-mobile-font-fallback'));
   });
 
-  test('builds the ticket URL without privileged credentials', () {
-    final url = buildSessionUrl(relay, 'device-1', 'single-use-ticket');
-
-    expect(url.path, '/s/device-1/');
-    expect(url.queryParameters, {'ticket': 'single-use-ticket'});
-    expect(url.toString(), isNot(contains('Bearer')));
-    expect(url.toString(), isNot(contains('deviceSecret')));
-  });
-
-  test('requires exact Relay scheme, host, and effective port', () {
+  test('requires the exact loopback session origin', () {
     expect(
       classifySessionNavigation(
-        Uri.parse('https://relay.example.com:443/assets/app.js'),
-        relay,
+        Uri.parse('http://127.0.0.1:49152/assets/app.js'),
+        sessionOrigin,
       ),
-      SessionNavigation.relay,
+      SessionNavigation.session,
     );
     expect(
-      classifySessionNavigation(Uri.parse('http://relay.example.com'), relay),
+      classifySessionNavigation(
+        Uri.parse('http://127.0.0.1:49153'),
+        sessionOrigin,
+      ),
       SessionNavigation.external,
     );
   });
@@ -41,7 +35,7 @@ void main() {
       'mailto:test@example.com',
     ]) {
       expect(
-        classifySessionNavigation(Uri.parse(value), relay),
+        classifySessionNavigation(Uri.parse(value), sessionOrigin),
         SessionNavigation.external,
       );
     }
@@ -53,7 +47,7 @@ void main() {
       'custom:test',
     ]) {
       expect(
-        classifySessionNavigation(Uri.parse(value), relay),
+        classifySessionNavigation(Uri.parse(value), sessionOrigin),
         SessionNavigation.blocked,
       );
     }

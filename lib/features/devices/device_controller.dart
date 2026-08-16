@@ -1,17 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/relay_service.dart';
+import '../../data/device_key_store.dart';
 import '../../domain/models.dart';
 
 final deviceControllerProvider =
     StateNotifierProvider<DeviceController, AsyncValue<List<Device>>>((ref) {
-      return DeviceController(ref.watch(relayServiceProvider));
+      return DeviceController(
+        ref.watch(relayServiceProvider),
+        keyStore: ref.watch(deviceKeyStoreProvider),
+      );
     });
 
 class DeviceController extends StateNotifier<AsyncValue<List<Device>>> {
-  DeviceController(this._service) : super(const AsyncValue.loading());
+  DeviceController(this._service, {DeviceKeyStore? keyStore})
+    : _keyStore = keyStore,
+      super(const AsyncValue.loading());
 
   final RelayService _service;
+  final DeviceKeyStore? _keyStore;
 
   Future<void> load({bool showLoading = true}) async {
     if (showLoading) state = const AsyncValue.loading();
@@ -25,6 +32,7 @@ class DeviceController extends StateNotifier<AsyncValue<List<Device>>> {
 
   Future<void> unbind(String id) async {
     await _service.unbindDevice(id);
+    await _keyStore?.delete(id);
     await load(showLoading: false);
   }
 

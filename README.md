@@ -48,7 +48,7 @@ Use any valid email, a password with at least eight characters, and any six-digi
 Install the `@april-jk/dsh-mobile` plugin into the DSH web profile, then start DSH:
 
 ```bash
-npx @deepseek-ai/dsh plugin --profile web add "github:april-jk/dsh-mobile-plugin#v0.1.2"
+npx @deepseek-ai/dsh plugin --profile web add "github:april-jk/dsh-mobile-plugin#v0.1.3"
 npx @deepseek-ai/dsh web
 ```
 

@@ -48,7 +48,7 @@ flutter run --dart-define=DSH_USE_MOCK=true
 将 `@april-jk/dsh-mobile` 插件安装到 DSH Web profile，然后启动 DSH：
 
 ```bash
-npx @deepseek-ai/dsh plugin --profile web add "github:april-jk/dsh-mobile-plugin#v0.1.2"
+npx @deepseek-ai/dsh plugin --profile web add "github:april-jk/dsh-mobile-plugin#v0.1.3"
 npx @deepseek-ai/dsh web
 ```
 

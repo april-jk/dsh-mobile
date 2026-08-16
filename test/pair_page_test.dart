@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('manual pairing submits a complete six-digit code', (
+  testWidgets('manual pairing cannot bypass the encrypted QR bootstrap', (
     tester,
   ) async {
     final service = _ClaimTrackingRelayService();
@@ -27,7 +27,8 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, '绑定电脑'));
     await tester.pump();
 
-    expect(service.claimedCodes, ['482913']);
+    expect(service.claimedCodes, isEmpty);
+    expect(find.textContaining('只支持扫描'), findsOneWidget);
   });
 }
 
