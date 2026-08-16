@@ -108,6 +108,15 @@ class _PairPageState extends ConsumerState<PairPage> {
     _waitForConfirmation();
   }
 
+  Future<void> _submitManualCode() async {
+    final code = _codeController.text;
+    if (code.length != 6) {
+      setState(() => _error = '请输入完整的 6 位配对码。');
+      return;
+    }
+    await _handleRawValue(code);
+  }
+
   void _onDetect(BarcodeCapture capture) {
     final value = capture.barcodes
         .map((barcode) => barcode.rawValue)
@@ -302,13 +311,7 @@ class _PairPageState extends ConsumerState<PairPage> {
         ),
         const SizedBox(height: 18),
         FilledButton(
-          onPressed: _submitting || _codeController.text.length != 6
-              ? () {
-                  if (!_submitting && _codeController.text.length != 6) {
-                    setState(() => _error = '请输入完整的 6 位配对码。');
-                  }
-                }
-              : () => _handleRawValue(_codeController.text),
+          onPressed: _submitting ? null : _submitManualCode,
           child: _submitting
               ? const SizedBox(
                   width: 20,
