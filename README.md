@@ -1,5 +1,7 @@
 # DSH Remote Mobile
 
+> **Community project:** this is an unofficial project, independently developed and maintained by the community. It is not reviewed, endorsed, or supported by DeepSeek.
+
 Flutter mobile client for securely opening a computer's local DeepSeek Harness through the DSH Relay.
 
 ## Requirements
@@ -77,3 +79,7 @@ flutter build appbundle --release
 Keep the original keystore and passwords in durable secret storage. Android updates must be signed by the same key.
 
 The canonical cross-team contracts are in `../dsh-公共文档/`.
+
+## License
+
+[MIT](LICENSE)
