@@ -4,13 +4,15 @@ class AppConfig {
   static const productionRelayUrl =
       'https://dsh-relay-production.up.railway.app';
 
-  factory AppConfig.fromEnvironment() {
-    const config = AppConfig(
-      relayBaseUrl: String.fromEnvironment(
-        'DSH_RELAY_URL',
-        defaultValue: productionRelayUrl,
-      ),
-      useMock: bool.fromEnvironment('DSH_USE_MOCK', defaultValue: false),
+  factory AppConfig.fromEnvironment({String? savedRelayUrl}) {
+    final config = AppConfig(
+      relayBaseUrl:
+          savedRelayUrl ??
+          const String.fromEnvironment(
+            'DSH_RELAY_URL',
+            defaultValue: productionRelayUrl,
+          ),
+      useMock: const bool.fromEnvironment('DSH_USE_MOCK', defaultValue: false),
     );
     const isRelease = bool.fromEnvironment('dart.vm.product');
     config.validate(isRelease: isRelease);
@@ -21,6 +23,11 @@ class AppConfig {
   final bool useMock;
 
   Uri get relayOrigin => Uri.parse(relayBaseUrl);
+
+  AppConfig withRelayBaseUrl(String value) => AppConfig(
+    relayBaseUrl: value.trim().replaceFirst(RegExp(r'/+$'), ''),
+    useMock: false,
+  );
 
   void validate({required bool isRelease}) {
     final relay = relayOrigin;

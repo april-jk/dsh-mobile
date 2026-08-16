@@ -8,7 +8,7 @@ import '../core/app_config.dart';
 import '../domain/models.dart';
 import 'token_store.dart';
 
-final appConfigProvider = Provider<AppConfig>(
+final appConfigProvider = StateProvider<AppConfig>(
   (ref) => AppConfig.fromEnvironment(),
 );
 

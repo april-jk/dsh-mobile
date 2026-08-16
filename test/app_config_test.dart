@@ -29,4 +29,13 @@ void main() {
     expect(() => config.validate(isRelease: true), throwsStateError);
     expect(() => config.validate(isRelease: false), returnsNormally);
   });
+
+  test('saved private Relay overrides the build default', () {
+    final config = AppConfig.fromEnvironment(
+      savedRelayUrl: 'https://relay.example.com/',
+    ).withRelayBaseUrl('https://relay.example.com/');
+
+    expect(config.relayBaseUrl, 'https://relay.example.com');
+    expect(() => config.validate(isRelease: true), returnsNormally);
+  });
 }

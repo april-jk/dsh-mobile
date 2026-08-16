@@ -6,6 +6,8 @@ import '../../core/theme.dart';
 import '../auth/auth_controller.dart';
 import '../update/app_update_prompt.dart';
 import '../update/app_update_service.dart';
+import '../../data/relay_service.dart';
+import 'relay_settings_dialog.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -14,6 +16,7 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
     final installedVersion = ref.watch(installedAppVersionProvider);
+    final config = ref.watch(appConfigProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
       body: ListView(
@@ -26,6 +29,19 @@ class SettingsPage extends ConsumerWidget {
                 leading: const Icon(Icons.alternate_email_rounded),
                 title: const Text('登录邮箱'),
                 subtitle: Text(auth.email ?? ''),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _SettingsSection(
+            title: '连接',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.dns_outlined),
+                title: const Text('Relay 服务器'),
+                subtitle: Text(config.relayBaseUrl),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => showRelaySettingsDialog(context, ref),
               ),
             ],
           ),

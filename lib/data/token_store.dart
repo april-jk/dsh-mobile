@@ -42,7 +42,11 @@ class SecureTokenStore implements TokenStore {
   }
 
   @override
-  Future<void> clear() => _storage.deleteAll();
+  Future<void> clear() => Future.wait([
+    _storage.delete(key: _accessKey),
+    _storage.delete(key: _refreshKey),
+    _storage.delete(key: _emailKey),
+  ]);
 }
 
 class MemoryTokenStore implements TokenStore {

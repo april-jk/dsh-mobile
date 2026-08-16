@@ -6,6 +6,7 @@ import '../../data/relay_service.dart';
 import '../../shared/brand_mark.dart';
 import '../../shared/field_label.dart';
 import 'auth_controller.dart';
+import '../settings/relay_settings_dialog.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -185,6 +186,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: () => showRelaySettingsDialog(context, ref),
+                    icon: const Icon(Icons.dns_outlined, size: 18),
+                    label: Text('Relay：${config.relayOrigin.host}'),
                   ),
                 ],
               ),
