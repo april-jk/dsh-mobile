@@ -15,13 +15,16 @@ final appConfigProvider = Provider<AppConfig>(
 final relayServiceProvider = Provider<RelayService>((ref) {
   final config = ref.watch(appConfigProvider);
   if (config.useMock) return MockRelayService();
-  return DioRelayService(
+  final service = DioRelayService(
     config: config,
     tokenStore: ref.watch(tokenStoreProvider),
   );
+  ref.onDispose(service.dispose);
+  return service;
 });
 
 abstract interface class RelayService {
+  Stream<void> get sessionExpired;
   Future<AuthTokens> register(String email, String password);
   Future<AuthTokens> login(String email, String password);
   Future<AuthTokens> refresh(String refreshToken);
@@ -33,9 +36,16 @@ abstract interface class RelayService {
 }
 
 class DioRelayService implements RelayService {
-  DioRelayService({required this.config, required this.tokenStore})
-    : _dio = Dio(BaseOptions(baseUrl: config.relayBaseUrl)),
-      _authDio = Dio(BaseOptions(baseUrl: config.relayBaseUrl)) {
+  DioRelayService({
+    required this.config,
+    required this.tokenStore,
+    HttpClientAdapter? httpClientAdapter,
+  }) : _dio = Dio(BaseOptions(baseUrl: config.relayBaseUrl)),
+       _authDio = Dio(BaseOptions(baseUrl: config.relayBaseUrl)) {
+    if (httpClientAdapter != null) {
+      _dio.httpClientAdapter = httpClientAdapter;
+      _authDio.httpClientAdapter = httpClientAdapter;
+    }
     _dio.interceptors.add(
       QueuedInterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -56,11 +66,23 @@ class DioRelayService implements RelayService {
             return;
           }
           try {
-            final accessToken = await _refreshAccessToken();
+            final currentToken = await tokenStore.readAccessToken();
+            final failedToken = options.headers['authorization'];
+            final accessToken =
+                currentToken != null && failedToken != 'Bearer $currentToken'
+                ? currentToken
+                : await _refreshAccessToken();
             options.headers['authorization'] = 'Bearer $accessToken';
             options.extra['retried'] = true;
             handler.resolve(await _dio.fetch<dynamic>(options));
-          } catch (_) {
+          } catch (refreshError) {
+            if (refreshError is ApiException &&
+                refreshError.statusCode == 401) {
+              await tokenStore.clear();
+              if (!_sessionExpiredController.isClosed) {
+                _sessionExpiredController.add(null);
+              }
+            }
             handler.next(error);
           }
         },
@@ -73,6 +95,17 @@ class DioRelayService implements RelayService {
   final Dio _dio;
   final Dio _authDio;
   Future<String>? _refreshInFlight;
+  final StreamController<void> _sessionExpiredController =
+      StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get sessionExpired => _sessionExpiredController.stream;
+
+  void dispose() {
+    _sessionExpiredController.close();
+    _dio.close(force: true);
+    _authDio.close(force: true);
+  }
 
   Future<T> _guard<T>(Future<T> Function() request) async {
     try {
@@ -172,13 +205,6 @@ class DioRelayService implements RelayService {
       expiresIn: response.data!['expiresIn'] as int? ?? 60,
     );
   });
-
-  Uri webViewUrl(String deviceId, String ticket) {
-    return config.relayOrigin.replace(
-      path: '/s/$deviceId/',
-      queryParameters: {'ticket': ticket},
-    );
-  }
 }
 
 class MockRelayService implements RelayService {
@@ -198,6 +224,9 @@ class MockRelayService implements RelayService {
       lastSeenAt: DateTime.now().subtract(const Duration(hours: 3)),
     ),
   ];
+
+  @override
+  Stream<void> get sessionExpired => const Stream<void>.empty();
 
   Future<T> _delay<T>(T value) async {
     await Future<void>.delayed(const Duration(milliseconds: 280));

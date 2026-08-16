@@ -8,15 +8,34 @@ Flutter mobile client for securely opening a computer's local DeepSeek Harness t
 - iOS 14 or newer
 - Android 8.0 (API 26) or newer
 
-## Run with Mock Relay
+## Run with the production Relay
 
-Mock mode is the default and supports login, registration, pairing, device management, and deterministic session states.
+The default build connects to the deployed HTTPS Relay:
 
 ```bash
 flutter run
 ```
 
+## Run with Mock Relay
+
+Mock mode must be enabled explicitly and supports deterministic login, pairing, device management, and session states.
+
+```bash
+flutter run --dart-define=DSH_USE_MOCK=true
+```
+
 Use any valid email, a password with at least eight characters, and any six-digit pairing code.
+
+## Prepare the computer
+
+Install the local `dsh-mobile` plugin into the DSH web profile, then start DSH:
+
+```bash
+dsh plugin --profile web add "/absolute/path/to/dsh-plugin"
+dsh web
+```
+
+The Companion follows the `dsh web` lifecycle. It does not need to be run as a separate background process.
 
 ## Run with a real Relay
 
@@ -34,8 +53,8 @@ For an Android emulator, use `http://10.0.2.2:8787`. Physical devices need an HT
 dart format --output=none --set-exit-if-changed lib test
 flutter analyze
 flutter test
-flutter build apk --debug
-flutter build ios --debug --no-codesign
+flutter build apk --release
+flutter build ios --release --no-codesign
 ```
 
 The canonical cross-team contracts are in `../dsh-公共文档/`.

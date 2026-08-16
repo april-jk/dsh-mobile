@@ -28,17 +28,34 @@ class DeviceController extends StateNotifier<AsyncValue<List<Device>>> {
     await load(showLoading: false);
   }
 
-  Future<Device?> waitForDevice(String id) async {
-    for (var attempt = 0; attempt < 8; attempt++) {
+  Future<Device?> waitForDevice(
+    String id, {
+    List<Duration> retryDelays = const [
+      Duration(seconds: 1),
+      Duration(seconds: 2),
+      Duration(seconds: 3),
+      Duration(seconds: 5),
+      Duration(seconds: 5),
+      Duration(seconds: 5),
+      Duration(seconds: 5),
+      Duration(seconds: 5),
+      Duration(seconds: 5),
+      Duration(seconds: 5),
+      Duration(seconds: 5),
+      Duration(seconds: 5),
+    ],
+  }) async {
+    for (final delay in retryDelays) {
       final devices = await _service.listDevices();
       final device = devices.where((item) => item.id == id).firstOrNull;
       if (device != null) {
         state = AsyncValue.data(devices);
         return device;
       }
-      await Future<void>.delayed(const Duration(seconds: 1));
+      await Future<void>.delayed(delay);
     }
-    await load(showLoading: false);
-    return null;
+    final devices = await _service.listDevices();
+    state = AsyncValue.data(devices);
+    return devices.where((item) => item.id == id).firstOrNull;
   }
 }

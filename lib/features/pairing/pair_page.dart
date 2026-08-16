@@ -24,6 +24,8 @@ class _PairPageState extends ConsumerState<PairPage> {
   );
   bool _manual = false;
   bool _submitting = false;
+  bool _waitingForConfirmation = false;
+  String? _claimedDeviceId;
   String? _error;
 
   @override
@@ -34,7 +36,7 @@ class _PairPageState extends ConsumerState<PairPage> {
   }
 
   Future<void> _handleRawValue(String raw) async {
-    if (_submitting) return;
+    if (_submitting || _claimedDeviceId != null) return;
     try {
       final payload = parsePairPayload(raw);
       final config = ref.read(appConfigProvider);
@@ -52,20 +54,13 @@ class _PairPageState extends ConsumerState<PairPage> {
       final deviceId = await ref
           .read(relayServiceProvider)
           .claimPair(payload.code);
-      final device = await ref
-          .read(deviceControllerProvider.notifier)
-          .waitForDevice(deviceId);
-      ref.read(analyticsProvider).track('pair_success', {'deviceId': deviceId});
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            device == null ? '已认领配对码，正在等待电脑确认。' : '绑定成功：${device.name}',
-          ),
-        ),
-      );
-      await Future<void>.delayed(const Duration(seconds: 2));
-      if (mounted) Navigator.of(context).pop();
+      setState(() {
+        _claimedDeviceId = deviceId;
+        _submitting = false;
+        _waitingForConfirmation = true;
+      });
+      await _waitForConfirmation();
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -74,6 +69,43 @@ class _PairPageState extends ConsumerState<PairPage> {
       });
       if (!_manual) await _scannerController.start();
     }
+  }
+
+  Future<void> _waitForConfirmation() async {
+    final deviceId = _claimedDeviceId;
+    if (deviceId == null || !_waitingForConfirmation) return;
+    try {
+      final device = await ref
+          .read(deviceControllerProvider.notifier)
+          .waitForDevice(deviceId);
+      if (!mounted) return;
+      if (device == null) {
+        setState(() {
+          _waitingForConfirmation = false;
+          _error = '电脑尚未确认绑定，你可以继续等待，无需重新扫码。';
+        });
+        return;
+      }
+      ref.read(analyticsProvider).track('pair_success', {'deviceId': deviceId});
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('绑定成功：${device.name}')));
+      Navigator.of(context).pop();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _waitingForConfirmation = false;
+        _error = '${userMessage(error)} 已认领配对码，无需重新扫码。';
+      });
+    }
+  }
+
+  void _continueWaiting() {
+    setState(() {
+      _waitingForConfirmation = true;
+      _error = null;
+    });
+    _waitForConfirmation();
   }
 
   void _onDetect(BarcodeCapture capture) {
@@ -103,39 +135,92 @@ class _PairPageState extends ConsumerState<PairPage> {
       appBar: AppBar(title: const Text('绑定电脑')),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-          children: [
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(
-                  value: false,
-                  icon: Icon(Icons.qr_code_scanner_rounded),
-                  label: Text('扫码'),
+        child: _claimedDeviceId != null
+            ? _confirmationState(context)
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                children: [
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: false,
+                        icon: Icon(Icons.qr_code_scanner_rounded),
+                        label: Text('扫码'),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        icon: Icon(Icons.dialpad_rounded),
+                        label: Text('手动输入'),
+                      ),
+                    ],
+                    selected: {_manual},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selection) =>
+                        _setMode(selection.first),
+                  ),
+                  const SizedBox(height: 24),
+                  if (_manual) _manualInput(context) else _scanner(context),
+                  if (_error != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      _error!,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: DshColors.danger),
+                    ),
+                  ],
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _confirmationState(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(28),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _waitingForConfirmation
+                    ? Icons.sync_rounded
+                    : Icons.schedule_rounded,
+                size: 44,
+                color: DshColors.navy,
+              ),
+              const SizedBox(height: 18),
+              Text('等待电脑确认', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(
+                _waitingForConfirmation
+                    ? '配对码已认领，正在等待 dsh-mobile 完成确认。'
+                    : _error ?? '电脑尚未完成确认。',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: DshColors.secondaryText,
                 ),
-                ButtonSegment(
-                  value: true,
-                  icon: Icon(Icons.dialpad_rounded),
-                  label: Text('手动输入'),
+              ),
+              const SizedBox(height: 24),
+              if (_waitingForConfirmation)
+                const CircularProgressIndicator(strokeWidth: 2)
+              else ...[
+                FilledButton.icon(
+                  onPressed: _continueWaiting,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('继续等待'),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('返回设备列表'),
                 ),
               ],
-              selected: {_manual},
-              showSelectedIcon: false,
-              onSelectionChanged: (selection) => _setMode(selection.first),
-            ),
-            const SizedBox(height: 24),
-            if (_manual) _manualInput(context) else _scanner(context),
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: DshColors.danger),
-              ),
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -186,7 +271,7 @@ class _PairPageState extends ConsumerState<PairPage> {
         Text('输入 6 位配对码', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
         Text(
-          '配对码显示在运行 dsh-remote 的电脑终端中，5 分钟内有效。',
+          '配对码显示在运行 dsh web 的电脑终端中，5 分钟内有效。',
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: DshColors.secondaryText),
@@ -201,7 +286,7 @@ class _PairPageState extends ConsumerState<PairPage> {
           style: const TextStyle(
             fontFamily: 'FragmentMono',
             fontSize: 28,
-            letterSpacing: 8,
+            letterSpacing: 0,
             fontWeight: FontWeight.w500,
           ),
           inputFormatters: [

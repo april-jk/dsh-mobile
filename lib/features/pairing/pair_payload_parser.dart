@@ -28,7 +28,8 @@ PairPayload parsePairPayload(String raw) {
 
 bool relayMatches(Uri? qrRelay, Uri configuredRelay) {
   if (qrRelay == null) return true;
-  return qrRelay.host == configuredRelay.host &&
+  return qrRelay.scheme == configuredRelay.scheme &&
+      qrRelay.host == configuredRelay.host &&
       _effectivePort(qrRelay) == _effectivePort(configuredRelay);
 }
 

@@ -32,4 +32,14 @@ void main() {
       isTrue,
     );
   });
+
+  test('rejects a Relay scheme downgrade on the same host and port', () {
+    expect(
+      relayMatches(
+        Uri.parse('http://relay.example.com:443'),
+        Uri.parse('https://relay.example.com:443'),
+      ),
+      isFalse,
+    );
+  });
 }

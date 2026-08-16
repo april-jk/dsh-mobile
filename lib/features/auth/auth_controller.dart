@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_exception.dart';
@@ -50,10 +52,30 @@ final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
 
 class AuthController extends StateNotifier<AuthState> {
   AuthController({required this.service, required this.tokenStore})
-    : super(const AuthState.initializing());
+    : super(const AuthState.initializing()) {
+    _sessionExpiredSubscription = service.sessionExpired.listen((_) {
+      unawaited(_expireSession());
+    });
+  }
 
   final RelayService service;
   final TokenStore tokenStore;
+  late final StreamSubscription<void> _sessionExpiredSubscription;
+
+  @override
+  void dispose() {
+    _sessionExpiredSubscription.cancel();
+    super.dispose();
+  }
+
+  Future<void> _expireSession() async {
+    await tokenStore.clear();
+    if (!mounted) return;
+    state = const AuthState(
+      status: AuthStatus.unauthenticated,
+      errorMessage: '登录已过期，请重新登录。',
+    );
+  }
 
   Future<void> bootstrap() async {
     final refreshToken = await tokenStore.readRefreshToken();

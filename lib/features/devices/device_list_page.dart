@@ -378,7 +378,7 @@ class _EmptyDevices extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          '在电脑上运行 dsh-remote，然后扫描终端中的配对码。',
+          '在电脑上运行 dsh web，然后扫描 dsh-mobile 显示的配对码。',
           textAlign: TextAlign.center,
           style: Theme.of(
             context,

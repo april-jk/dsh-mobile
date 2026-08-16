@@ -9,8 +9,16 @@ import '../../core/analytics.dart';
 import '../../core/theme.dart';
 import '../../data/relay_service.dart';
 import '../../domain/models.dart';
+import 'session_policy.dart';
 
-enum _SessionViewState { loading, webView, deviceOffline, dshOffline, failed }
+enum _SessionViewState {
+  loading,
+  webView,
+  deviceOffline,
+  dshOffline,
+  tunnelTimeout,
+  failed,
+}
 
 class SessionWebViewPage extends ConsumerStatefulWidget {
   const SessionWebViewPage({super.key, required this.device});
@@ -27,6 +35,7 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
   Uri? _sessionUrl;
   _SessionViewState _state = _SessionViewState.loading;
   bool _renewingTicket = false;
+  final _ticketRenewalGuard = TicketRenewalGuard();
   int _progress = 0;
 
   @override
@@ -48,20 +57,6 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
     ref.read(analyticsProvider).track('session_open', {
       'deviceId': widget.device.id,
     });
-    if (widget.device.availability == DeviceAvailability.offline) {
-      _showState(
-        _SessionViewState.deviceOffline,
-        analyticsEvent: 'device_offline_seen',
-      );
-      return;
-    }
-    if (widget.device.availability == DeviceAvailability.dshOffline) {
-      _showState(
-        _SessionViewState.dshOffline,
-        analyticsEvent: 'dsh_offline_seen',
-      );
-      return;
-    }
     final config = ref.read(appConfigProvider);
     if (config.useMock) {
       await Future<void>.delayed(const Duration(milliseconds: 300));
@@ -72,15 +67,17 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
       final ticket = await ref
           .read(relayServiceProvider)
           .createWebTicket(widget.device.id);
-      final url = config.relayOrigin.replace(
-        path: '/s/${widget.device.id}/',
-        queryParameters: {'ticket': ticket.ticket},
+      final url = buildSessionUrl(
+        config.relayOrigin,
+        widget.device.id,
+        ticket.ticket,
       );
       if (!mounted) return;
       setState(() {
         _sessionUrl = url;
         _state = _SessionViewState.webView;
         _progress = 0;
+        _ticketRenewalGuard.reset();
       });
     } catch (_) {
       if (mounted) setState(() => _state = _SessionViewState.failed);
@@ -118,17 +115,22 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
     await _openSession();
   }
 
-  Future<void> _renewTicket() async {
+  Future<void> _renewTicket({bool afterUnauthorized = false}) async {
     if (_renewingTicket) return;
+    if (afterUnauthorized && !_ticketRenewalGuard.take()) {
+      _showState(_SessionViewState.failed);
+      return;
+    }
     _renewingTicket = true;
     try {
       final ticket = await ref
           .read(relayServiceProvider)
           .createWebTicket(widget.device.id);
       final config = ref.read(appConfigProvider);
-      final url = config.relayOrigin.replace(
-        path: '/s/${widget.device.id}/',
-        queryParameters: {'ticket': ticket.ticket},
+      final url = buildSessionUrl(
+        config.relayOrigin,
+        widget.device.id,
+        ticket.ticket,
       );
       _sessionUrl = url;
       await _controller?.loadUrl(
@@ -150,53 +152,66 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
     if (mounted) Navigator.of(context).pop();
   }
 
-  bool _isRelayOrigin(Uri uri) {
-    final relay = ref.read(appConfigProvider).relayOrigin;
-    return uri.scheme == relay.scheme &&
-        uri.host == relay.host &&
-        _port(uri) == _port(relay);
-  }
-
-  int _port(Uri uri) {
-    if (uri.hasPort) return uri.port;
-    return uri.scheme == 'https' ? 443 : 80;
-  }
-
   Future<NavigationActionPolicy> _navigationPolicy(
     NavigationAction navigationAction,
   ) async {
     final url = navigationAction.request.url;
     if (url == null) return NavigationActionPolicy.CANCEL;
     final uri = Uri.parse(url.toString());
-    if (_isRelayOrigin(uri)) return NavigationActionPolicy.ALLOW;
+    return switch (classifySessionNavigation(
+      uri,
+      ref.read(appConfigProvider).relayOrigin,
+    )) {
+      SessionNavigation.relay => NavigationActionPolicy.ALLOW,
+      SessionNavigation.external => _openExternal(uri),
+      SessionNavigation.blocked => NavigationActionPolicy.CANCEL,
+    };
+  }
+
+  Future<NavigationActionPolicy> _openExternal(Uri uri) async {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
     return NavigationActionPolicy.CANCEL;
   }
 
-  void _handleHttpError(
+  Future<void> _handleHttpError(
     WebResourceRequest request,
     WebResourceResponse response,
-  ) {
+  ) async {
     if (request.isForMainFrame != true) return;
-    switch (response.statusCode) {
-      case 401:
-        unawaited(_renewTicket());
-      case 503:
-        if (widget.device.online) {
-          _showState(
-            _SessionViewState.dshOffline,
-            analyticsEvent: 'dsh_offline_seen',
-          );
-        } else {
+    switch (sessionHttpAction(response.statusCode)) {
+      case SessionHttpAction.renewTicket:
+        await _renewTicket(afterUnauthorized: true);
+      case SessionHttpAction.refreshDeviceStatus:
+        await _refreshDeviceStatus();
+      case SessionHttpAction.tunnelTimeout:
+        _showState(_SessionViewState.tunnelTimeout);
+      case SessionHttpAction.failed:
+        _showState(_SessionViewState.failed);
+      case SessionHttpAction.ignore:
+        return;
+    }
+  }
+
+  Future<void> _refreshDeviceStatus() async {
+    try {
+      final devices = await ref.read(relayServiceProvider).listDevices();
+      switch (latestDeviceAvailability(devices, widget.device.id)) {
+        case DeviceAvailability.offline:
           _showState(
             _SessionViewState.deviceOffline,
             analyticsEvent: 'device_offline_seen',
           );
-        }
-      default:
-        if ((response.statusCode ?? 0) >= 400) {
+        case DeviceAvailability.dshOffline:
+          _showState(
+            _SessionViewState.dshOffline,
+            analyticsEvent: 'dsh_offline_seen',
+          );
+        case DeviceAvailability.online:
+        case null:
           _showState(_SessionViewState.failed);
-        }
+      }
+    } catch (_) {
+      _showState(_SessionViewState.failed);
     }
   }
 
@@ -247,19 +262,25 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
           _SessionViewState.deviceOffline => _SessionError(
             icon: Icons.computer_outlined,
             title: '电脑不在线',
-            message: '请确认电脑端的 dsh-remote 正在运行。',
+            message: '请确认电脑端已运行 dsh web，dsh-mobile 会随它自动启停。',
             onRetry: _reload,
           ),
           _SessionViewState.dshOffline => _SessionError(
             icon: Icons.power_settings_new_rounded,
             title: 'DSH 未启动',
-            message: '电脑已在线，请在电脑上运行 npx @deepseek-ai/dsh web。',
+            message: '电脑已在线，请在电脑上运行 dsh web。',
+            onRetry: _reload,
+          ),
+          _SessionViewState.tunnelTimeout => _SessionError(
+            icon: Icons.timer_outlined,
+            title: '连接超时',
+            message: 'Relay 等待电脑响应超时，请检查网络后重试。',
             onRetry: _reload,
           ),
           _SessionViewState.failed => _SessionError(
             icon: Icons.cloud_off_outlined,
-            title: '连接失败',
-            message: '请检查网络后重试。',
+            title: '暂时无法连接',
+            message: '无法确认电脑或 DSH 的当前状态，请稍后重试。',
             onRetry: _reload,
           ),
         },
@@ -301,10 +322,16 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
         final rawUrl = action.request.url;
         if (rawUrl == null) return false;
         final uri = Uri.parse(rawUrl.toString());
-        if (_isRelayOrigin(uri)) {
-          await controller.loadUrl(urlRequest: URLRequest(url: rawUrl));
-        } else {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        switch (classifySessionNavigation(
+          uri,
+          ref.read(appConfigProvider).relayOrigin,
+        )) {
+          case SessionNavigation.relay:
+            await controller.loadUrl(urlRequest: URLRequest(url: rawUrl));
+          case SessionNavigation.external:
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          case SessionNavigation.blocked:
+            break;
         }
         return false;
       },
