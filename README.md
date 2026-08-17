@@ -15,7 +15,7 @@ Flutter mobile client for securely opening a computer's local DeepSeek Harness t
 
 ## Install the Android app
 
-Download the signed versioned APK from the [latest DSH Remote Mobile release](https://github.com/april-jk/dsh-mobile/releases/latest). On Android, allow installation from the browser or file manager when prompted, then open **DSH Remote**.
+Download the signed versioned APK from the [latest DSH Mobile Suite release](https://github.com/april-jk/dsh-mobile-suite/releases/latest). On Android, allow installation from the browser or file manager when prompted, then open **DSH Remote**.
 
 The APK uses application ID `io.github.apriljk.dshremote`. Verify the downloaded file against `SHA256SUMS` from the same release before installing it.
 

@@ -15,7 +15,7 @@
 
 ## 安装 Android 应用
 
-从 [DSH Remote Mobile 最新 Release](https://github.com/april-jk/dsh-mobile/releases/latest) 下载带版本号的已签名 APK。Android 提示时，允许浏览器或文件管理器安装未知应用，然后打开 **DSH Remote**。
+从 [DSH Mobile Suite 最新 Release](https://github.com/april-jk/dsh-mobile-suite/releases/latest) 下载带版本号的已签名 APK。Android 提示时，允许浏览器或文件管理器安装未知应用，然后打开 **DSH Remote**。
 
 APK 的应用 ID 是 `io.github.apriljk.dshremote`。安装前请使用同一 Release 中的 `SHA256SUMS` 校验下载文件。
 
