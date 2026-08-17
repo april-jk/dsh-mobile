@@ -13,6 +13,16 @@ void main() {
     expect(payload.e2eeKey, hasLength(43));
   });
 
+  test('parses a browser pairing link without sending the key to Relay', () {
+    final payload = parsePairPayload(
+      'https://relay.example.com/app/#/pair?code=482913&key=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8',
+    );
+
+    expect(payload.code, '482913');
+    expect(payload.relay, Uri.parse('https://relay.example.com'));
+    expect(payload.e2eeKey, hasLength(43));
+  });
+
   test('rejects a manual six-digit code', () {
     expect(() => parsePairPayload('482913'), throwsA(isA<ApiException>()));
   });

@@ -6,27 +6,53 @@ import '../../domain/models.dart';
 PairPayload parsePairPayload(String raw) {
   final trimmed = raw.trim();
   try {
-    final json = jsonDecode(trimmed) as Map<String, dynamic>;
-    final code = json['code']?.toString() ?? '';
-    final e2eeKey = json['e2eeKey']?.toString() ?? '';
-    if (json['v'] != 2 ||
-        !RegExp(r'^\d{6}$').hasMatch(code) ||
-        !_validMasterKey(e2eeKey)) {
-      throw const FormatException();
+    if (trimmed.startsWith('{')) {
+      return _parseJsonPayload(jsonDecode(trimmed) as Map<String, dynamic>);
     }
-    final relayValue = json['relay']?.toString();
-    final relay = relayValue == null ? null : Uri.tryParse(relayValue);
-    if (relayValue != null &&
-        (relay == null || !{'http', 'https'}.contains(relay.scheme))) {
-      throw const FormatException();
-    }
-    return PairPayload(code: code, relay: relay, e2eeKey: e2eeKey);
+    return _parseWebLink(Uri.parse(trimmed));
   } catch (_) {
     throw const ApiException(
       'e2ee_pairing_required',
-      message: '0.1.4 必须扫描电脑上的加密配对二维码。',
+      message: '请扫描电脑上的加密配对二维码。',
     );
   }
+}
+
+PairPayload _parseJsonPayload(Map<String, dynamic> json) {
+  final code = json['code']?.toString() ?? '';
+  final e2eeKey = json['e2eeKey']?.toString() ?? '';
+  if (json['v'] != 2 ||
+      !RegExp(r'^\d{6}$').hasMatch(code) ||
+      !_validMasterKey(e2eeKey)) {
+    throw const FormatException();
+  }
+  final relayValue = json['relay']?.toString();
+  final relay = relayValue == null ? null : Uri.tryParse(relayValue);
+  if (relayValue != null &&
+      (relay == null || !{'http', 'https'}.contains(relay.scheme))) {
+    throw const FormatException();
+  }
+  return PairPayload(code: code, relay: relay, e2eeKey: e2eeKey);
+}
+
+PairPayload _parseWebLink(Uri uri) {
+  if (uri.scheme != 'https' ||
+      uri.host.isEmpty ||
+      uri.path != '/app/' ||
+      !uri.fragment.startsWith('/pair?')) {
+    throw const FormatException();
+  }
+  final query = Uri.splitQueryString(uri.fragment.substring('/pair?'.length));
+  final code = query['code'] ?? '';
+  final e2eeKey = query['key'] ?? '';
+  if (!RegExp(r'^\d{6}$').hasMatch(code) || !_validMasterKey(e2eeKey)) {
+    throw const FormatException();
+  }
+  return PairPayload(
+    code: code,
+    relay: uri.replace(path: '', fragment: '', query: ''),
+    e2eeKey: e2eeKey,
+  );
 }
 
 bool _validMasterKey(String value) {
