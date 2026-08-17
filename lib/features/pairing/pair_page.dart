@@ -111,7 +111,7 @@ class _PairPageState extends ConsumerState<PairPage> {
   }
 
   Future<void> _submitManualCode() async {
-    setState(() => _error = '0.1.3 为保证端到端加密，只支持扫描电脑上的二维码。');
+    setState(() => _error = '0.1.4 为保证端到端加密，只支持扫描电脑上的二维码。');
   }
 
   void _onDetect(BarcodeCapture capture) {

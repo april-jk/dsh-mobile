@@ -312,7 +312,7 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
           _SessionViewState.encryptionRequired => _SessionError(
             icon: Icons.qr_code_2_rounded,
             title: '需要重新扫码',
-            message: '0.1.3 已启用端到端加密，请移除旧配对后扫描电脑上的新二维码。',
+            message: '0.1.4 已启用端到端加密，请移除旧配对后扫描电脑上的新二维码。',
             onRetry: _reload,
           ),
           _SessionViewState.failed => _SessionError(

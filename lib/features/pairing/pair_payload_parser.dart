@@ -24,7 +24,7 @@ PairPayload parsePairPayload(String raw) {
   } catch (_) {
     throw const ApiException(
       'e2ee_pairing_required',
-      message: '0.1.3 必须扫描电脑上的加密配对二维码。',
+      message: '0.1.4 必须扫描电脑上的加密配对二维码。',
     );
   }
 }

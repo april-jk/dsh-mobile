@@ -17,6 +17,22 @@ fun signingValue(property: String, environment: String): String? =
     System.getenv(environment)?.takeIf { it.isNotBlank() }
         ?: keystoreProperties.getProperty(property)?.takeIf { it.isNotBlank() }
 
+fun stableAndroidVersionCode(versionName: String): Int {
+    val parts = versionName.split(".").map { it.toLongOrNull() }
+    if (parts.size != 3 || parts.any { it == null || it !in 0L..999L }) {
+        throw GradleException(
+            "Android versionName must be MAJOR.MINOR.PATCH with each part between 0 and 999: " +
+                versionName,
+        )
+    }
+
+    val versionCode = parts[0]!! * 1_000_000 + parts[1]!! * 1_000 + parts[2]!!
+    if (versionCode !in 1..Int.MAX_VALUE.toLong()) {
+        throw GradleException("Android versionCode is outside the supported range: $versionCode")
+    }
+    return versionCode.toInt()
+}
+
 val releaseStoreFile = signingValue("storeFile", "DSH_ANDROID_STORE_FILE")
 val releaseStorePassword = signingValue("storePassword", "DSH_ANDROID_STORE_PASSWORD")
 val releaseKeyAlias = signingValue("keyAlias", "DSH_ANDROID_KEY_ALIAS")
@@ -48,11 +64,9 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 26
         targetSdk = flutter.targetSdkVersion
-        // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
-        // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
-        // You can force using the value of versionCode by specifying the `-P force-version-code-ignoring-abi=true`
-        // flag during build.
-        versionCode = flutter.versionCode
+        // Derive a stable code from versionName so standalone and Suite builds cannot
+        // accidentally downgrade each other by supplying different build numbers.
+        versionCode = stableAndroidVersionCode(flutter.versionName)
         versionName = flutter.versionName
     }
 

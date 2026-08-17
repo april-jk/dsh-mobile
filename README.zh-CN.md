@@ -48,7 +48,7 @@ flutter run --dart-define=DSH_USE_MOCK=true
 将 `@april-jk/dsh-mobile` 插件安装到 DSH Web profile，然后启动 DSH：
 
 ```bash
-npx @deepseek-ai/dsh plugin --profile web add "github:april-jk/dsh-mobile-plugin#v0.1.3"
+npx @deepseek-ai/dsh plugin --profile web add "github:april-jk/dsh-mobile-plugin#v0.1.4"
 npx @deepseek-ai/dsh web
 ```
 
@@ -106,7 +106,7 @@ flutter build appbundle --release
 
 ## 自动发布
 
-GitHub Actions 会验证每个 Pull Request 和推送到 `main` 的提交。推送与应用版本（不含 build number）完全一致的 tag 会运行全部测试并发布产物，例如 `version: 0.1.3+3` 对应 `v0.1.3`。发布内容包括：
+GitHub Actions 会验证每个 Pull Request 和推送到 `main` 的提交。推送与应用版本（不含 build number）完全一致的 tag 会运行全部测试并发布产物，例如 `version: 0.1.4+1004` 对应 `v0.1.4`。发布内容包括：
 
 - 已签名的 Android APK 和 AAB；
 - 用于验证构建、不能直接安装的无签名 iOS `.app` 归档；
@@ -120,6 +120,8 @@ GitHub Actions 会验证每个 Pull Request 和推送到 `main` 的提交。推�
 - `DSH_ANDROID_KEY_PASSWORD`。
 
 任何签名 Secret 缺失时，发布任务都会失败，不会生成 Android Release。Apple 签名证书和 Provisioning Profile 配置完成前，暂不提供 iOS App Store 分发包。
+
+Android versionCode 固定按 `MAJOR * 1,000,000 + MINOR * 1,000 + PATCH` 计算。`pubspec.yaml` 的 build suffix 必须与该值保持一致，确保 standalone 与 Suite 发布的版本码单调递增且可以相互覆盖升级。
 
 ## 许可证
 

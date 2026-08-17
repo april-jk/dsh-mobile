@@ -25,7 +25,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - name: Verify tag matches app version
         shell: bash
         run: |
@@ -75,7 +75,7 @@ jobs:
           keystore_path="$RUNNER_TEMP/dsh-release.jks"
           printf '%s' "$DSH_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
           echo "DSH_ANDROID_STORE_FILE=$keystore_path" >> "$GITHUB_ENV"
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - run: flutter build apk --release
       - run: flutter build appbundle --release
       - name: Stage Android artifacts
@@ -103,7 +103,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - run: flutter build ios --release --no-codesign
       - name: Stage unsigned iOS artifact
         shell: bash
@@ -140,10 +140,23 @@ jobs:
         shell: bash
         run: |
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
-          else
-            gh release create "$GITHUB_REF_NAME" dist/* \
-              --verify-tag \
-              --generate-notes \
-              --title "DSH Remote $GITHUB_REF_NAME"
+            existing_dir="$(mktemp -d)"
+            expected_names="$(find dist -maxdepth 1 -type f -exec basename {} \; | sort)"
+            existing_names="$(gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' | sort)"
+            if [[ "$existing_names" != "$expected_names" ]]; then
+              echo "Release $GITHUB_REF_NAME already exists with a different asset set" >&2
+              exit 1
+            fi
+            gh release download "$GITHUB_REF_NAME" --dir "$existing_dir"
+            if ! cmp --silent dist/SHA256SUMS "$existing_dir/SHA256SUMS"; then
+              echo "Release $GITHUB_REF_NAME already exists with different asset hashes" >&2
+              exit 1
+            fi
+            (cd "$existing_dir" && sha256sum --check SHA256SUMS)
+            echo "Release $GITHUB_REF_NAME already contains the exact assets; nothing to publish"
+            exit 0
           fi
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --verify-tag \
+            --generate-notes \
+            --title "DSH Remote $GITHUB_REF_NAME"

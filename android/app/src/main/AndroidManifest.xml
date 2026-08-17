@@ -3,6 +3,9 @@
     <uses-permission android:name="android.permission.CAMERA" />
 
     <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
         android:label="DSH Remote"
         android:name="${applicationName}"
         android:networkSecurityConfig="@xml/network_security_config"
