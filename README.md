@@ -15,7 +15,7 @@ Flutter mobile client for securely opening a computer's local DeepSeek Harness t
 
 ## Install the Android app
 
-Download the signed `dsh-mobile-android.apk` from the [latest DSH Mobile Suite release](https://github.com/april-jk/dsh-mobile-suite/releases/latest). On Android, allow installation from the browser or file manager when prompted, then open **DSH Remote**.
+Download the signed versioned APK from the [latest DSH Remote Mobile release](https://github.com/april-jk/dsh-mobile/releases/latest). On Android, allow installation from the browser or file manager when prompted, then open **DSH Remote**.
 
 The APK uses application ID `io.github.apriljk.dshremote`. Verify the downloaded file against `SHA256SUMS` from the same release before installing it.
 
@@ -103,6 +103,23 @@ flutter build appbundle --release
 ```
 
 Keep the original keystore and passwords in durable secret storage. Android updates must be signed by the same key.
+
+## Automated releases
+
+GitHub Actions verifies every pull request and push to `main`. Pushing a tag that exactly matches the app version without its build suffix, such as `v0.1.3` for `version: 0.1.3+3`, runs the full test suite and publishes:
+
+- signed Android APK and AAB files;
+- an unsigned iOS `.app` archive for build verification, not direct installation;
+- `SHA256SUMS` covering every release asset.
+
+Configure these GitHub Actions repository secrets before pushing a release tag:
+
+- `DSH_ANDROID_KEYSTORE_BASE64`: base64-encoded release keystore;
+- `DSH_ANDROID_STORE_PASSWORD`;
+- `DSH_ANDROID_KEY_ALIAS`;
+- `DSH_ANDROID_KEY_PASSWORD`.
+
+The release job fails instead of producing an Android build when any signing secret is absent. iOS App Store distribution remains intentionally out of scope until Apple signing credentials and provisioning are configured.
 
 ## License
 

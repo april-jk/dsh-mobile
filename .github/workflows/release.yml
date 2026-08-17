@@ -1,0 +1,148 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: 3.38.10
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Verify tag matches app version
+        shell: bash
+        run: |
+          app_version="$(sed -n 's/^version: \([^+]*\).*/\1/p' pubspec.yaml)"
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [[ -z "$app_version" || "$tag_version" != "$app_version" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match pubspec version $app_version" >&2
+            exit 1
+          fi
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+
+  android:
+    needs: verify
+    runs-on: ubuntu-latest
+    env:
+      DSH_ANDROID_STORE_PASSWORD: ${{ secrets.DSH_ANDROID_STORE_PASSWORD }}
+      DSH_ANDROID_KEY_ALIAS: ${{ secrets.DSH_ANDROID_KEY_ALIAS }}
+      DSH_ANDROID_KEY_PASSWORD: ${{ secrets.DSH_ANDROID_KEY_PASSWORD }}
+      DSH_ANDROID_KEYSTORE_BASE64: ${{ secrets.DSH_ANDROID_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Restore release keystore
+        shell: bash
+        run: |
+          for secret_name in \
+            DSH_ANDROID_KEYSTORE_BASE64 \
+            DSH_ANDROID_STORE_PASSWORD \
+            DSH_ANDROID_KEY_ALIAS \
+            DSH_ANDROID_KEY_PASSWORD; do
+            if [[ -z "${!secret_name}" ]]; then
+              echo "Required GitHub Actions secret $secret_name is not configured" >&2
+              exit 1
+            fi
+          done
+          keystore_path="$RUNNER_TEMP/dsh-release.jks"
+          printf '%s' "$DSH_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          echo "DSH_ANDROID_STORE_FILE=$keystore_path" >> "$GITHUB_ENV"
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - run: flutter build appbundle --release
+      - name: Stage Android artifacts
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            "dist/dsh-mobile-android-v${version}.apk"
+          cp build/app/outputs/bundle/release/app-release.aab \
+            "dist/dsh-mobile-android-v${version}.aab"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: dist/*
+          if-no-files-found: error
+
+  ios:
+    needs: verify
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
+      - name: Stage unsigned iOS artifact
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios/iphoneos/Runner.app \
+            "dist/dsh-mobile-ios-unsigned-v${version}.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-release
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs:
+      - android
+      - ios
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*-release"
+          path: dist
+          merge-multiple: true
+      - name: Create checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --verify-tag \
+              --generate-notes \
+              --title "DSH Remote $GITHUB_REF_NAME"
+          fi

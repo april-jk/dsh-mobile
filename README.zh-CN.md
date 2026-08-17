@@ -15,7 +15,7 @@
 
 ## 安装 Android 应用
 
-从 [DSH Mobile Suite 最新 Release](https://github.com/april-jk/dsh-mobile-suite/releases/latest) 下载已签名的 `dsh-mobile-android.apk`。Android 提示时，允许浏览器或文件管理器安装未知应用，然后打开 **DSH Remote**。
+从 [DSH Remote Mobile 最新 Release](https://github.com/april-jk/dsh-mobile/releases/latest) 下载带版本号的已签名 APK。Android 提示时，允许浏览器或文件管理器安装未知应用，然后打开 **DSH Remote**。
 
 APK 的应用 ID 是 `io.github.apriljk.dshremote`。安装前请使用同一 Release 中的 `SHA256SUMS` 校验下载文件。
 
@@ -103,6 +103,23 @@ flutter build appbundle --release
 ```
 
 请将原始 keystore 和密码保存在可靠的密钥存储中。Android 后续更新必须使用同一密钥签名。
+
+## 自动发布
+
+GitHub Actions 会验证每个 Pull Request 和推送到 `main` 的提交。推送与应用版本（不含 build number）完全一致的 tag 会运行全部测试并发布产物，例如 `version: 0.1.3+3` 对应 `v0.1.3`。发布内容包括：
+
+- 已签名的 Android APK 和 AAB；
+- 用于验证构建、不能直接安装的无签名 iOS `.app` 归档；
+- 覆盖全部发布产物的 `SHA256SUMS`。
+
+推送发布 tag 前，请在 GitHub Actions 中配置以下仓库 Secrets：
+
+- `DSH_ANDROID_KEYSTORE_BASE64`：Release keystore 的 base64 编码；
+- `DSH_ANDROID_STORE_PASSWORD`；
+- `DSH_ANDROID_KEY_ALIAS`；
+- `DSH_ANDROID_KEY_PASSWORD`。
+
+任何签名 Secret 缺失时，发布任务都会失败，不会生成 Android Release。Apple 签名证书和 Provisioning Profile 配置完成前，暂不提供 iOS App Store 分发包。
 
 ## 许可证
 
