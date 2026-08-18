@@ -124,9 +124,7 @@ class SettingsPage extends ConsumerWidget {
                 leading: const Icon(Icons.computer_outlined),
                 title: Text(device.name),
                 subtitle: Text(
-                  device.availability == DeviceAvailability.online
-                      ? '在线'
-                      : '不可用',
+                  device.availability == DeviceAvailability.online ? '在线' : '不可用',
                 ),
                 enabled: device.availability == DeviceAvailability.online,
                 onTap: () => Navigator.pop(context, device),
