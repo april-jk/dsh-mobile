@@ -50,7 +50,14 @@ PairPayload _parseWebLink(Uri uri) {
   }
   return PairPayload(
     code: code,
-    relay: uri.replace(path: '', fragment: '', query: ''),
+    // Rebuild the origin explicitly. Uri.replace(path: '', ...) can preserve
+    // an empty query/fragment delimiter (`?#`), which breaks strict Relay
+    // origin comparisons on mobile.
+    relay: Uri(
+      scheme: uri.scheme,
+      host: uri.host,
+      port: uri.hasPort ? uri.port : null,
+    ),
     e2eeKey: e2eeKey,
   );
 }
