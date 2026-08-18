@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api_exception.dart';
 import '../../core/theme.dart';
+import '../../data/device_key_store.dart';
+import '../../data/relay_service.dart';
 import '../../domain/models.dart';
 import '../../shared/brand_mark.dart';
 import '../pairing/pair_page.dart';
@@ -107,6 +110,7 @@ class _DeviceListPageState extends ConsumerState<DeviceListPage> {
                             ),
                             onRename: () => _rename(items[index]),
                             onUnbind: () => _unbind(items[index]),
+                            onBrowser: () => _openBrowser(items[index]),
                           ),
                         ),
                 ),
@@ -184,6 +188,24 @@ class _DeviceListPageState extends ConsumerState<DeviceListPage> {
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
+
+  Future<void> _openBrowser(Device device) async {
+    final key = await ref.read(deviceKeyStoreProvider).read(device.id);
+    if (key == null) {
+      _showError('这台电脑的加密密钥不在当前手机中，请重新配对。');
+      return;
+    }
+    final relay = ref.read(appConfigProvider).relayBaseUrl;
+    final uri = Uri.parse(relay).replace(
+      path: '/app/',
+      query: '',
+      fragment:
+          '/web-pair?device=${Uri.encodeComponent(device.id)}&key=${Uri.encodeComponent(key)}',
+    );
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      _showError('无法打开浏览器，请稍后重试。');
+    }
+  }
 }
 
 class _DeviceTile extends StatelessWidget {
@@ -192,12 +214,14 @@ class _DeviceTile extends StatelessWidget {
     required this.onOpen,
     required this.onRename,
     required this.onUnbind,
+    required this.onBrowser,
   });
 
   final Device device;
   final VoidCallback onOpen;
   final VoidCallback onRename;
   final VoidCallback onUnbind;
+  final VoidCallback onBrowser;
 
   @override
   Widget build(BuildContext context) {
@@ -276,9 +300,18 @@ class _DeviceTile extends StatelessWidget {
               ),
               PopupMenuButton<String>(
                 tooltip: '电脑操作',
-                onSelected: (value) =>
-                    value == 'rename' ? onRename() : onUnbind(),
+                onSelected: (value) {
+                  switch (value) {
+                    case 'browser':
+                      onBrowser();
+                    case 'rename':
+                      onRename();
+                    case 'unbind':
+                      onUnbind();
+                  }
+                },
                 itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'browser', child: Text('在浏览器中使用')),
                   PopupMenuItem(value: 'rename', child: Text('重命名')),
                   PopupMenuItem(value: 'unbind', child: Text('移除配对')),
                 ],
