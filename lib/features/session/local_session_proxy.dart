@@ -100,7 +100,11 @@ class LocalSessionProxy {
             ..sameSite = SameSite.strict
             ..path = '/';
           request.response.cookies.add(cookie);
-          await request.response.redirect(origin);
+          final query = Map<String, String>.from(request.uri.queryParameters)
+            ..remove('bootstrap');
+          await request.response.redirect(
+            origin.replace(path: request.uri.path, queryParameters: query),
+          );
           return;
         }
         await _jsonError(request.response, 401, 'invalid_local_session');
