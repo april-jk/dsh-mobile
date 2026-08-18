@@ -30,6 +30,14 @@ jobs:
           cache: true
       - run: flutter pub get --enforce-lockfile
       - run: dart format --output=none --set-exit-if-changed lib test
+        continue-on-error: true
+        id: format_check
+      - name: Print formatter diff
+        if: steps.format_check.outcome == 'failure'
+        run: |
+          dart format lib/features/settings/settings_page.dart
+          git diff -- lib/features/settings/settings_page.dart
+          exit 1
       - run: flutter analyze
       - run: flutter test
       - run: flutter build apk --debug
