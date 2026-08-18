@@ -106,9 +106,9 @@ class SettingsPage extends ConsumerWidget {
     final devices = ref.read(deviceControllerProvider);
     final items = devices.valueOrNull ?? const <Device>[];
     if (items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('暂无已配对的电脑')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('暂无已配对的电脑')));
       return;
     }
     final selected = await showModalBottomSheet<Device>(
@@ -124,7 +124,9 @@ class SettingsPage extends ConsumerWidget {
                 leading: const Icon(Icons.computer_outlined),
                 title: Text(device.name),
                 subtitle: Text(
-                  device.availability == DeviceAvailability.online ? '在线' : '不可用',
+                  device.availability == DeviceAvailability.online
+                      ? '在线'
+                      : '不可用',
                 ),
                 enabled: device.availability == DeviceAvailability.online,
                 onTap: () => Navigator.pop(context, device),
