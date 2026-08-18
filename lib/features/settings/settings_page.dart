@@ -7,6 +7,9 @@ import '../auth/auth_controller.dart';
 import '../update/app_update_prompt.dart';
 import '../update/app_update_service.dart';
 import '../../data/relay_service.dart';
+import '../../domain/models.dart';
+import '../devices/device_controller.dart';
+import '../session/session_webview_page.dart';
 import 'relay_settings_dialog.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -42,6 +45,13 @@ class SettingsPage extends ConsumerWidget {
                 subtitle: Text(config.relayBaseUrl),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => showRelaySettingsDialog(context, ref),
+              ),
+              ListTile(
+                leading: const Icon(Icons.folder_copy_outlined),
+                title: const Text('远程文件'),
+                subtitle: const Text('浏览电脑文件并预览常见文件'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _selectDevice(context, ref),
               ),
             ],
           ),
@@ -88,6 +98,47 @@ class SettingsPage extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _selectDevice(BuildContext context, WidgetRef ref) async {
+    final devices = ref.read(deviceControllerProvider);
+    final items = devices.valueOrNull ?? const <Device>[];
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('暂无已配对的电脑')),
+      );
+      return;
+    }
+    final selected = await showModalBottomSheet<Device>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(title: Text('选择电脑')),
+            ...items.map(
+              (device) => ListTile(
+                leading: const Icon(Icons.computer_outlined),
+                title: Text(device.name),
+                subtitle: Text(device.availability == DeviceAvailability.online ? '在线' : '不可用'),
+                enabled: device.availability == DeviceAvailability.online,
+                onTap: () => Navigator.pop(context, device),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (selected == null || !context.mounted) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => SessionWebViewPage(
+          device: selected,
+          initialPath: '/dsh-mobile/files',
+        ),
       ),
     );
   }

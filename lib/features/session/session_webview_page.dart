@@ -26,9 +26,14 @@ enum _SessionViewState {
 }
 
 class SessionWebViewPage extends ConsumerStatefulWidget {
-  const SessionWebViewPage({super.key, required this.device});
+  const SessionWebViewPage({
+    super.key,
+    required this.device,
+    this.initialPath = '/',
+  });
 
   final Device device;
+  final String initialPath;
 
   @override
   ConsumerState<SessionWebViewPage> createState() => _SessionWebViewPageState();
@@ -79,7 +84,7 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
       throw StateError('session page disposed');
     }
     _proxy = proxy;
-    return proxy.startUrl;
+    return proxy.startUrl.replace(path: widget.initialPath);
   }
 
   void _showOpenError(Object error) {
