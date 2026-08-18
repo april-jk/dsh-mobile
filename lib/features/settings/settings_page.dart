@@ -123,7 +123,11 @@ class SettingsPage extends ConsumerWidget {
               (device) => ListTile(
                 leading: const Icon(Icons.computer_outlined),
                 title: Text(device.name),
-                subtitle: Text(device.availability == DeviceAvailability.online ? '在线' : '不可用'),
+                subtitle: Text(
+                  device.availability == DeviceAvailability.online
+                      ? '在线'
+                      : '不可用',
+                ),
                 enabled: device.availability == DeviceAvailability.online,
                 onTap: () => Navigator.pop(context, device),
               ),

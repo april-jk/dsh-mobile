@@ -48,7 +48,7 @@ flutter run --dart-define=DSH_USE_MOCK=true
 将 `@april-jk/dsh-mobile` 插件安装到 DSH Web profile，然后启动 DSH：
 
 ```bash
-npx @deepseek-ai/dsh plugin --profile web add "github:april-jk/dsh-mobile-plugin#v0.1.4"
+npx @deepseek-ai/dsh plugin --profile web add "github:april-jk/dsh-mobile-plugin#v0.1.5"
 npx @deepseek-ai/dsh web
 ```
 
@@ -106,7 +106,7 @@ flutter build appbundle --release
 
 ## 自动发布
 
-GitHub Actions 会验证每个 Pull Request 和推送到 `main` 的提交。推送与应用版本（不含 build number）完全一致的 tag 会运行全部测试并发布产物，例如 `version: 0.1.4+1004` 对应 `v0.1.4`。发布内容包括：
+GitHub Actions 会验证每个 Pull Request 和推送到 `main` 的提交。推送与应用版本（不含 build number）完全一致的 tag 会运行全部测试并发布产物，例如 `version: 0.1.5+1005` 对应 `v0.1.5`。发布内容包括：
 
 - 已签名的 Android APK 和 AAB；
 - 用于验证构建、不能直接安装的无签名 iOS `.app` 归档；

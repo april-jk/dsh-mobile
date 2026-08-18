@@ -48,7 +48,7 @@ Use any valid email, a password with at least eight characters, and any six-digi
 Install the `@april-jk/dsh-mobile` plugin into the DSH web profile, then start DSH:
 
 ```bash
-npx @deepseek-ai/dsh plugin --profile web add "github:april-jk/dsh-mobile-plugin#v0.1.4"
+npx @deepseek-ai/dsh plugin --profile web add "github:april-jk/dsh-mobile-plugin#v0.1.5"
 npx @deepseek-ai/dsh web
 ```
 
@@ -106,7 +106,7 @@ Keep the original keystore and passwords in durable secret storage. Android upda
 
 ## Automated releases
 
-GitHub Actions verifies every pull request and push to `main`. Pushing a tag that exactly matches the app version without its build suffix, such as `v0.1.4` for `version: 0.1.4+1004`, runs the full test suite and publishes:
+GitHub Actions verifies every pull request and push to `main`. Pushing a tag that exactly matches the app version without its build suffix, such as `v0.1.5` for `version: 0.1.5+1005`, runs the full test suite and publishes:
 
 - signed Android APK and AAB files;
 - an unsigned iOS `.app` archive for build verification, not direct installation;
