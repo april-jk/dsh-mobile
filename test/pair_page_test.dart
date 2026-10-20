@@ -4,11 +4,17 @@ import 'package:dsh_mobile/core/api_exception.dart';
 import 'package:dsh_mobile/data/relay_service.dart';
 import 'package:dsh_mobile/domain/models.dart';
 import 'package:dsh_mobile/features/pairing/pair_page.dart';
+import 'package:dsh_mobile/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    await AppLocalizations.preload();
+  });
+
   testWidgets('manual pairing cannot bypass the encrypted QR bootstrap', (
     tester,
   ) async {
@@ -16,19 +22,23 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [relayServiceProvider.overrideWithValue(service)],
-        child: const MaterialApp(home: PairPage()),
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const PairPage(),
+        ),
       ),
     );
     await tester.pump();
 
-    await tester.tap(find.text('手动输入'));
+    await tester.tap(find.text('Enter manually'));
     await tester.pump();
     await tester.enterText(find.byKey(const Key('pair-code-field')), '482913');
-    await tester.tap(find.widgetWithText(FilledButton, '绑定电脑'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Pair computer'));
     await tester.pump();
 
     expect(service.claimedCodes, isEmpty);
-    expect(find.textContaining('只支持扫描'), findsOneWidget);
+    expect(find.textContaining('only supports scanning'), findsOneWidget);
   });
 }
 

@@ -1,6 +1,6 @@
 # DSH Remote Mobile
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[English](README.md) | [Polski](README.pl.md) | [简体中文](README.zh-CN.md)
 
 > **Community project:** this is an unofficial project, independently developed and maintained by the community. It is not reviewed, endorsed, or supported by DeepSeek.
 
@@ -24,6 +24,10 @@ The APK uses application ID `io.github.apriljk.dshremote`. Verify the downloaded
 - Flutter 3.38.10 (Dart 3.10)
 - iOS 14 or newer
 - Android 8.0 (API 26) or newer
+
+## Languages and theme
+
+The app interface is available in English, Polish, and Simplified Chinese. It follows the phone's system language by default and falls back to English for unsupported languages. Settings lets you choose the language and switch between light and dark themes; both choices persist across launches. The signed-in e-mail is hidden by default and is revealed only for the current visit with the eye button. The language choice does not change the account, pairing, or stored credentials. Computer names, paths, URLs, protocol identifiers, and error codes are not translated.
 
 ## Run with the production Relay
 
@@ -73,7 +77,7 @@ flutter run \
 
 For an Android emulator, use `http://10.0.2.2:8787`. Physical devices need an HTTPS Relay or a development hostname reachable from the device. Production builds must use HTTPS.
 
-Public builds can connect to a private Relay without recompilation. Before login, tap the **Relay** server button, or open **Settings > Relay 服务器** after login, and enter the Relay's HTTPS origin. Start the computer with the matching origin, for example `DSH_RELAY=https://relay.example.com npx @deepseek-ai/dsh web`. Changing Relay logs out the current account because tokens belong to the previous server.
+Public builds can connect to a private Relay without recompilation. Before login, tap the **Relay** server button, or open **Settings > Relay server** after login, and enter the Relay's HTTPS origin. Start the computer with the matching origin, for example `DSH_RELAY=https://relay.example.com npx @deepseek-ai/dsh web`. Changing Relay logs out the current account because tokens belong to the previous server.
 
 ## Verification
 

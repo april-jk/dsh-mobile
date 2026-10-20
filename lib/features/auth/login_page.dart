@@ -1,3 +1,4 @@
+import '../../l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -45,6 +46,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(authControllerProvider);
     final config = ref.watch(appConfigProvider);
+    final l10n = context.l10n;
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -59,25 +61,33 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     alignment: Alignment.centerLeft,
                     child: BrandMark(),
                   ),
-                  const SizedBox(height: 56),
+                  const SizedBox(height: 32),
                   Text(
-                    _register ? '创建账号' : '连接你的 DSH',
+                    _register
+                        ? l10n.text('createAccount')
+                        : l10n.text('connectDsh'),
                     style: Theme.of(context).textTheme.headlineLarge,
                   ),
                   const SizedBox(height: 10),
                   Text(
                     _register
-                        ? '注册后，用手机扫码绑定你的电脑。'
-                        : '登录后访问已绑定电脑上的 DeepSeek Harness。',
+                        ? l10n.text('registerIntro')
+                        : l10n.text('loginIntro'),
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: DshColors.secondaryText,
+                      color: context.dsh.secondaryText,
                     ),
                   ),
                   const SizedBox(height: 32),
                   SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(value: false, label: Text('登录')),
-                      ButtonSegment(value: true, label: Text('注册')),
+                    segments: [
+                      ButtonSegment(
+                        value: false,
+                        label: Text(l10n.text('login')),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        label: Text(l10n.text('register')),
+                      ),
                     ],
                     selected: {_register},
                     showSelectedIcon: false,
@@ -93,14 +103,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const FieldLabel('邮箱'),
+                        FieldLabel(l10n.text('email')),
                         TextFormField(
                           key: const Key('email-field'),
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           autofillHints: const [AutofillHints.email],
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             hintText: 'name@example.com',
                           ),
                           validator: (value) {
@@ -108,13 +118,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             if (!RegExp(
                               r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
                             ).hasMatch(email)) {
-                              return '请输入有效邮箱。';
+                              return l10n.text('validEmail');
                             }
                             return null;
                           },
                         ),
                         const SizedBox(height: 18),
-                        const FieldLabel('密码'),
+                        FieldLabel(l10n.text('password')),
                         TextFormField(
                           key: const Key('password-field'),
                           controller: _passwordController,
@@ -125,9 +135,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               : const [AutofillHints.password],
                           onFieldSubmitted: (_) => _submit(),
                           decoration: InputDecoration(
-                            hintText: '至少 8 位',
+                            hintText: l10n.text('passwordHint'),
                             suffixIcon: IconButton(
-                              tooltip: _obscurePassword ? '显示密码' : '隐藏密码',
+                              tooltip: _obscurePassword
+                                  ? l10n.text('showPassword')
+                                  : l10n.text('hidePassword'),
                               onPressed: () => setState(() {
                                 _obscurePassword = !_obscurePassword;
                               }),
@@ -138,16 +150,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ),
                             ),
                           ),
-                          validator: (value) =>
-                              (value?.length ?? 0) < 8 ? '密码至少需要 8 位。' : null,
+                          validator: (value) => (value?.length ?? 0) < 8
+                              ? l10n.text('passwordLength')
+                              : null,
                         ),
-                        if (state.errorMessage != null) ...[
+                        if (state.error != null) ...[
                           const SizedBox(height: 14),
                           Text(
-                            state.errorMessage!,
+                            l10n.error(state.error!),
                             key: const Key('auth-error'),
                             style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: DshColors.danger),
+                                ?.copyWith(color: context.dsh.danger),
                           ),
                         ],
                         const SizedBox(height: 24),
@@ -155,15 +168,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           key: const Key('auth-submit'),
                           onPressed: state.busy ? null : _submit,
                           child: state.busy
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: Colors.white,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimary,
                                   ),
                                 )
-                              : Text(_register ? '创建账号' : '登录'),
+                              : Text(
+                                  _register
+                                      ? l10n.text('createAccount')
+                                      : l10n.text('login'),
+                                ),
                         ),
                       ],
                     ),
@@ -171,17 +190,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.lock_outline,
                         size: 15,
-                        color: DshColors.mutedText,
+                        color: context.dsh.mutedText,
                       ),
                       const SizedBox(width: 7),
                       Expanded(
                         child: Text(
                           config.useMock
-                              ? '当前使用 Mock Relay，可输入任意有效邮箱和 8 位密码。'
-                              : '登录凭证仅保存在系统安全存储中。',
+                              ? l10n.text('mockLogin')
+                              : l10n.text('secureCredentials'),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
@@ -191,7 +210,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   TextButton.icon(
                     onPressed: () => showRelaySettingsDialog(context, ref),
                     icon: const Icon(Icons.dns_outlined, size: 18),
-                    label: Text('Relay：${config.relayOrigin.host}'),
+                    label: Text(
+                      l10n.text('relayHost', {'host': config.relayOrigin.host}),
+                    ),
                   ),
                 ],
               ),

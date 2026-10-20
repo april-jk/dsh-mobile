@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+
 import '../../domain/models.dart';
 import 'e2ee_codec.dart';
 import 'secure_tunnel.dart';
@@ -93,6 +95,10 @@ class LocalSessionProxy {
       }
       if (!_authorized(request)) {
         final bootstrap = request.uri.queryParameters['bootstrap'];
+        debugPrint(
+          'DSH proxy auth ${request.uri} cookies=${request.cookies.length} '
+          'bootstrap=${bootstrap != null}',
+        );
         if (!_bootstrapped && bootstrap == capability) {
           _bootstrapped = true;
           final cookie = Cookie(_cookieName, capability)
@@ -115,7 +121,8 @@ class LocalSessionProxy {
       } else {
         await _forwardHttp(request);
       }
-    } catch (_) {
+    } catch (error) {
+      debugPrint('DSH proxy failed ${request.uri}: $error');
       try {
         await _jsonError(request.response, 502, 'secure_tunnel_failed');
       } catch (_) {}

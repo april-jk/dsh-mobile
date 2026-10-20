@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../../l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_config.dart';
@@ -57,8 +60,9 @@ class _RelaySettingsDialogState extends State<_RelaySettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return AlertDialog(
-      title: const Text('Relay 服务器'),
+      title: Text(l10n.text('relayServer')),
       content: Form(
         key: _formKey,
         child: TextFormField(
@@ -66,27 +70,29 @@ class _RelaySettingsDialogState extends State<_RelaySettingsDialog> {
           controller: _controller,
           keyboardType: TextInputType.url,
           autocorrect: false,
-          decoration: const InputDecoration(
-            labelText: 'HTTPS 地址',
+          decoration: InputDecoration(
+            labelText: l10n.text('httpsAddress'),
             hintText: 'https://relay.example.com',
           ),
           validator: (value) {
             final uri = Uri.tryParse(value?.trim() ?? '');
-            if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
-              return '请输入有效的 HTTPS Relay 地址。';
-            }
-            return null;
+            final valid =
+                uri != null &&
+                uri.host.isNotEmpty &&
+                (uri.scheme == 'https' ||
+                    (!kReleaseMode && uri.scheme == 'http'));
+            return valid ? null : l10n.text('validRelay');
           },
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, AppConfig.productionRelayUrl),
-          child: const Text('使用公共 Relay'),
+          child: Text(l10n.text('publicRelay')),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
+          child: Text(l10n.text('cancel')),
         ),
         FilledButton(
           onPressed: () {
@@ -94,7 +100,7 @@ class _RelaySettingsDialogState extends State<_RelaySettingsDialog> {
               Navigator.pop(context, _controller.text.trim());
             }
           },
-          child: const Text('保存'),
+          child: Text(l10n.text('save')),
         ),
       ],
     );

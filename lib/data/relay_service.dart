@@ -213,14 +213,16 @@ class MockRelayService implements RelayService {
   final List<Device> _devices = [
     Device(
       id: 'dev_mock_primary',
-      name: 'Watson\'s MacBook Air',
+      name: "Watson's MacBook Air",
+      displayNameKey: 'mockPrimary',
       online: true,
       dshStatus: 'online',
       lastSeenAt: DateTime.now(),
     ),
     Device(
       id: 'dev_mock_offline',
-      name: '办公室 Mac mini',
+      name: 'Office Mac mini',
+      displayNameKey: 'mockOffice',
       online: false,
       dshStatus: 'offline',
       lastSeenAt: DateTime.now().subtract(const Duration(hours: 3)),
@@ -276,7 +278,8 @@ class MockRelayService implements RelayService {
         0,
         Device(
           id: id,
-          name: '新配对的 MacBook Pro',
+          name: 'MacBook Pro',
+          displayNameKey: 'mockPaired',
           online: true,
           dshStatus: 'online',
           lastSeenAt: DateTime.now(),

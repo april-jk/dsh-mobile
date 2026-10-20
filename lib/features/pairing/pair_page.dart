@@ -1,3 +1,4 @@
+import '../../l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,8 +7,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/analytics.dart';
 import '../../core/api_exception.dart';
 import '../../core/theme.dart';
-import '../../data/relay_service.dart';
 import '../../data/device_key_store.dart';
+import '../../data/relay_service.dart';
 import '../devices/device_controller.dart';
 import 'pair_payload_parser.dart';
 
@@ -27,7 +28,7 @@ class _PairPageState extends ConsumerState<PairPage> {
   bool _submitting = false;
   bool _waitingForConfirmation = false;
   String? _claimedDeviceId;
-  String? _error;
+  _ErrorDetail? _error;
 
   @override
   void dispose() {
@@ -42,10 +43,7 @@ class _PairPageState extends ConsumerState<PairPage> {
       final payload = parsePairPayload(raw);
       final config = ref.read(appConfigProvider);
       if (!relayMatches(payload.relay, config.relayOrigin)) {
-        throw const ApiException(
-          'relay_mismatch',
-          message: '二维码属于另一个 Relay，请检查电脑端配置。',
-        );
+        throw const ApiException('relay_mismatch');
       }
       setState(() {
         _submitting = true;
@@ -67,7 +65,7 @@ class _PairPageState extends ConsumerState<PairPage> {
       if (!mounted) return;
       setState(() {
         _submitting = false;
-        _error = userMessage(error);
+        _error = _ErrorDetail(error);
       });
       if (!_manual) await _scannerController.start();
     }
@@ -84,20 +82,26 @@ class _PairPageState extends ConsumerState<PairPage> {
       if (device == null) {
         setState(() {
           _waitingForConfirmation = false;
-          _error = '电脑尚未确认绑定，你可以继续等待，无需重新扫码。';
+          _error = const _ErrorDetail(null, key: 'confirmationPending');
         });
         return;
       }
       ref.read(analyticsProvider).track('pair_success', {'deviceId': deviceId});
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('绑定成功：${device.name}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.text('pairSuccess', {
+              'name': context.l10n.deviceName(device),
+            }),
+          ),
+        ),
+      );
       Navigator.of(context).pop();
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _waitingForConfirmation = false;
-        _error = '${userMessage(error)} 已认领配对码，无需重新扫码。';
+        _error = _ErrorDetail(error, key: 'claimedError');
       });
     }
   }
@@ -111,7 +115,7 @@ class _PairPageState extends ConsumerState<PairPage> {
   }
 
   Future<void> _submitManualCode() async {
-    setState(() => _error = '0.1.5 为保证端到端加密，只支持扫描电脑上的二维码。');
+    setState(() => _error = const _ErrorDetail(null, key: 'manualUnsupported'));
   }
 
   void _onDetect(BarcodeCapture capture) {
@@ -135,10 +139,23 @@ class _PairPageState extends ConsumerState<PairPage> {
     }
   }
 
+  String _errorText() {
+    final detail = _error;
+    if (detail == null) return '';
+    final l10n = context.l10n;
+    final key = detail.key;
+    if (key == null) return l10n.error(detail.error!);
+    return l10n.text(
+      key,
+      detail.error == null ? const {} : {'error': l10n.error(detail.error!)},
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('绑定电脑')),
+      appBar: AppBar(title: Text(l10n.text('pairComputer'))),
       body: SafeArea(
         top: false,
         child: _claimedDeviceId != null
@@ -147,16 +164,16 @@ class _PairPageState extends ConsumerState<PairPage> {
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
                 children: [
                   SegmentedButton<bool>(
-                    segments: const [
+                    segments: [
                       ButtonSegment(
                         value: false,
-                        icon: Icon(Icons.qr_code_scanner_rounded),
-                        label: Text('扫码'),
+                        icon: const Icon(Icons.qr_code_scanner_rounded),
+                        label: Text(l10n.text('scan')),
                       ),
                       ButtonSegment(
                         value: true,
-                        icon: Icon(Icons.dialpad_rounded),
-                        label: Text('手动输入'),
+                        icon: const Icon(Icons.dialpad_rounded),
+                        label: Text(l10n.text('manualEntry')),
                       ),
                     ],
                     selected: {_manual},
@@ -169,11 +186,11 @@ class _PairPageState extends ConsumerState<PairPage> {
                   if (_error != null) ...[
                     const SizedBox(height: 16),
                     Text(
-                      _error!,
+                      _errorText(),
                       textAlign: TextAlign.center,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: DshColors.danger),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: context.dsh.danger,
+                      ),
                     ),
                   ],
                 ],
@@ -183,6 +200,15 @@ class _PairPageState extends ConsumerState<PairPage> {
   }
 
   Widget _confirmationState(BuildContext context) {
+    final l10n = context.l10n;
+    final String status;
+    if (_waitingForConfirmation) {
+      status = l10n.text('claimedWaiting');
+    } else if (_error != null) {
+      status = _errorText();
+    } else {
+      status = l10n.text('notConfirmed');
+    }
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(28),
@@ -196,18 +222,19 @@ class _PairPageState extends ConsumerState<PairPage> {
                     ? Icons.sync_rounded
                     : Icons.schedule_rounded,
                 size: 44,
-                color: DshColors.navy,
+                color: context.dsh.navy,
               ),
               const SizedBox(height: 18),
-              Text('等待电脑确认', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                l10n.text('waitingComputer'),
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 8),
               Text(
-                _waitingForConfirmation
-                    ? '配对码已认领，正在等待 dsh-mobile 完成确认。'
-                    : _error ?? '电脑尚未完成确认。',
+                status,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: DshColors.secondaryText,
+                  color: context.dsh.secondaryText,
                 ),
               ),
               const SizedBox(height: 24),
@@ -217,12 +244,12 @@ class _PairPageState extends ConsumerState<PairPage> {
                 FilledButton.icon(
                   onPressed: _continueWaiting,
                   icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('继续等待'),
+                  label: Text(l10n.text('continueWaiting')),
                 ),
                 const SizedBox(height: 10),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('返回设备列表'),
+                  child: Text(l10n.text('backDevices')),
                 ),
               ],
             ],
@@ -260,27 +287,31 @@ class _PairPageState extends ConsumerState<PairPage> {
         ),
         const SizedBox(height: 18),
         Text(
-          '将电脑终端中的配对二维码放入框内。',
+          context.l10n.text('scanInstruction'),
           textAlign: TextAlign.center,
           style: Theme.of(
             context,
-          ).textTheme.bodyMedium?.copyWith(color: DshColors.secondaryText),
+          ).textTheme.bodyMedium?.copyWith(color: context.dsh.secondaryText),
         ),
       ],
     );
   }
 
   Widget _manualInput(BuildContext context) {
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('输入 6 位配对码', style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          l10n.text('enterCode'),
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         const SizedBox(height: 8),
         Text(
-          '配对码显示在运行 npx @deepseek-ai/dsh web 的电脑终端中，5 分钟内有效。',
+          l10n.text('codeHelp'),
           style: Theme.of(
             context,
-          ).textTheme.bodyMedium?.copyWith(color: DshColors.secondaryText),
+          ).textTheme.bodyMedium?.copyWith(color: context.dsh.secondaryText),
         ),
         const SizedBox(height: 22),
         TextField(
@@ -299,7 +330,7 @@ class _PairPageState extends ConsumerState<PairPage> {
             FilteringTextInputFormatter.digitsOnly,
             LengthLimitingTextInputFormatter(6),
           ],
-          decoration: const InputDecoration(hintText: '000000'),
+          decoration: InputDecoration(hintText: '000000'),
           onSubmitted: (_) {
             if (_codeController.text.length == 6) {
               _handleRawValue(_codeController.text);
@@ -310,19 +341,29 @@ class _PairPageState extends ConsumerState<PairPage> {
         FilledButton(
           onPressed: _submitting ? null : _submitManualCode,
           child: _submitting
-              ? const SizedBox(
+              ? SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onPrimary,
                   ),
                 )
-              : const Text('绑定电脑'),
+              : Text(l10n.text('pairComputer')),
         ),
       ],
     );
   }
+}
+
+class _ErrorDetail {
+  const _ErrorDetail(this.error, {this.key});
+
+  /// Raw failure localized at render time.
+  final Object? error;
+
+  /// Catalog key for the surrounding message, with [error] as `{error}`.
+  final String? key;
 }
 
 class _ScannerFramePainter extends CustomPainter {

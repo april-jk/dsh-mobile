@@ -1,3 +1,4 @@
+import '../../l10n/app_localizations.dart';
 import 'dart:async';
 import 'dart:collection';
 
@@ -14,6 +15,7 @@ import '../../data/relay_service.dart';
 import '../../domain/models.dart';
 import 'local_session_proxy.dart';
 import 'session_policy.dart';
+import 'session_target.dart';
 
 enum _SessionViewState {
   loading,
@@ -41,6 +43,7 @@ class SessionWebViewPage extends ConsumerStatefulWidget {
 
 class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
   final _openedAt = DateTime.now();
+  late final Analytics _analytics;
   InAppWebViewController? _controller;
   Uri? _sessionUrl;
   LocalSessionProxy? _proxy;
@@ -54,12 +57,15 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
   @override
   void initState() {
     super.initState();
+    // Captured before disposal: Riverpod forbids ref access from dispose, and
+    // the session duration is reported there.
+    _analytics = ref.read(analyticsProvider);
     Future<void>.microtask(_openSession);
   }
 
   @override
   void dispose() {
-    ref.read(analyticsProvider).track('session_duration', {
+    _analytics.track('session_duration', {
       'deviceId': widget.device.id,
       'seconds': DateTime.now().difference(_openedAt).inSeconds,
     });
@@ -70,7 +76,7 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
   Future<Uri> _createSecureSession() async {
     final key = await ref.read(deviceKeyStoreProvider).read(widget.device.id);
     if (key == null) {
-      throw const ApiException('e2ee_required', message: '这台电脑需要重新扫码以建立加密密钥。');
+      throw const ApiException('e2ee_required');
     }
     final ticket = await ref
         .read(relayServiceProvider)
@@ -84,7 +90,7 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
       throw StateError('session page disposed');
     }
     _proxy = proxy;
-    return proxy.startUrl.replace(path: widget.initialPath);
+    return sessionTargetUrl(proxy.startUrl, widget.initialPath);
   }
 
   void _showOpenError(Object error) {
@@ -124,6 +130,9 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
         _readyReported = false;
       });
     } catch (error) {
+      // Kept as a diagnostic: the user only sees a localized state, while this
+      // line distinguishes ticket, tunnel and loopback failures in logcat.
+      debugPrint('DSH session open failed: $error');
       _showOpenError(error);
     }
   }
@@ -215,6 +224,7 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
     WebResourceResponse response,
   ) async {
     if (request.isForMainFrame != true) return;
+    debugPrint('DSH session http ${response.statusCode} ${request.url}');
     switch (sessionHttpAction(response.statusCode)) {
       case SessionHttpAction.renewTicket:
         await _renewTicket(afterUnauthorized: true);
@@ -258,6 +268,7 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -266,18 +277,18 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
-            tooltip: '返回',
+            tooltip: l10n.text('back'),
             onPressed: _handleBack,
             icon: const Icon(Icons.arrow_back_rounded),
           ),
           title: Text(
-            widget.device.name,
+            l10n.deviceName(widget.device),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           actions: [
             IconButton(
-              tooltip: '刷新',
+              tooltip: l10n.text('refresh'),
               onPressed: () => _reload(manual: true),
               icon: const Icon(Icons.refresh_rounded),
             ),
@@ -293,40 +304,43 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
                 )
               : null,
         ),
-        body: switch (_state) {
-          _SessionViewState.loading => const _SessionSkeleton(),
-          _SessionViewState.webView => _sessionContent(),
-          _SessionViewState.deviceOffline => _SessionError(
-            icon: Icons.computer_outlined,
-            title: '电脑不在线',
-            message: '请确认电脑端已运行 npx @deepseek-ai/dsh web，dsh-mobile 会随它自动启停。',
-            onRetry: _reload,
-          ),
-          _SessionViewState.dshOffline => _SessionError(
-            icon: Icons.power_settings_new_rounded,
-            title: 'DSH 未启动',
-            message: '电脑已在线，请在电脑上运行 npx @deepseek-ai/dsh web。',
-            onRetry: _reload,
-          ),
-          _SessionViewState.tunnelTimeout => _SessionError(
-            icon: Icons.timer_outlined,
-            title: '连接超时',
-            message: 'Relay 等待电脑响应超时，请检查网络后重试。',
-            onRetry: _reload,
-          ),
-          _SessionViewState.encryptionRequired => _SessionError(
-            icon: Icons.qr_code_2_rounded,
-            title: '需要重新扫码',
-            message: '0.1.5 已启用端到端加密，请移除旧配对后扫描电脑上的新二维码。',
-            onRetry: _reload,
-          ),
-          _SessionViewState.failed => _SessionError(
-            icon: Icons.cloud_off_outlined,
-            title: '暂时无法连接',
-            message: '无法确认电脑或 DSH 的当前状态，请稍后重试。',
-            onRetry: _reload,
-          ),
-        },
+        body: SafeArea(
+          top: false,
+          child: switch (_state) {
+            _SessionViewState.loading => const _SessionSkeleton(),
+            _SessionViewState.webView => _sessionContent(),
+            _SessionViewState.deviceOffline => _SessionError(
+              icon: Icons.computer_outlined,
+              title: l10n.text('offlineTitle'),
+              message: l10n.text('offlineHelp'),
+              onRetry: _reload,
+            ),
+            _SessionViewState.dshOffline => _SessionError(
+              icon: Icons.power_settings_new_rounded,
+              title: l10n.text('dshOffline'),
+              message: l10n.text('dshOfflineHelp'),
+              onRetry: _reload,
+            ),
+            _SessionViewState.tunnelTimeout => _SessionError(
+              icon: Icons.timer_outlined,
+              title: l10n.text('timeoutTitle'),
+              message: l10n.text('timeoutHelp'),
+              onRetry: _reload,
+            ),
+            _SessionViewState.encryptionRequired => _SessionError(
+              icon: Icons.qr_code_2_rounded,
+              title: l10n.text('rescanTitle'),
+              message: l10n.text('rescanHelp'),
+              onRetry: _reload,
+            ),
+            _SessionViewState.failed => _SessionError(
+              icon: Icons.cloud_off_outlined,
+              title: l10n.text('connectionFailed'),
+              message: l10n.text('connectionFailedHelp'),
+              onRetry: _reload,
+            ),
+          },
+        ),
       ),
     );
   }
@@ -365,8 +379,11 @@ class _SessionWebViewPageState extends ConsumerState<SessionWebViewPage> {
       },
       onReceivedHttpError: (_, request, response) =>
           _handleHttpError(request, response),
-      onReceivedError: (_, request, _) {
+      onReceivedError: (_, request, error) {
         if (request.isForMainFrame == true) {
+          debugPrint(
+            'DSH session load error ${error.type}: ${error.description} ${request.url}',
+          );
           _showState(_SessionViewState.failed);
         }
       },
@@ -405,28 +422,37 @@ class _SessionSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.dsh;
     return ColoredBox(
-      color: DshColors.surface,
+      color: palette.surface,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(height: 36, decoration: _placeholder()),
+            Container(height: 36, decoration: _placeholder(palette)),
             const SizedBox(height: 20),
-            Container(height: 14, width: 210, decoration: _placeholder()),
+            Container(
+              height: 14,
+              width: 210,
+              decoration: _placeholder(palette),
+            ),
             const SizedBox(height: 10),
-            Container(height: 14, decoration: _placeholder()),
+            Container(height: 14, decoration: _placeholder(palette)),
             const SizedBox(height: 10),
-            Container(height: 14, width: 260, decoration: _placeholder()),
+            Container(
+              height: 14,
+              width: 260,
+              decoration: _placeholder(palette),
+            ),
           ],
         ),
       ),
     );
   }
 
-  BoxDecoration _placeholder() => BoxDecoration(
-    color: DshColors.softSurface,
+  BoxDecoration _placeholder(DshPalette palette) => BoxDecoration(
+    color: palette.softSurface,
     borderRadius: BorderRadius.circular(7),
   );
 }
@@ -454,7 +480,7 @@ class _SessionError extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 42, color: DshColors.secondaryText),
+              Icon(icon, size: 42, color: context.dsh.secondaryText),
               const SizedBox(height: 16),
               Text(title, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 8),
@@ -462,14 +488,14 @@ class _SessionError extends StatelessWidget {
                 message,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: DshColors.secondaryText,
+                  color: context.dsh.secondaryText,
                 ),
               ),
               const SizedBox(height: 22),
               OutlinedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded),
-                label: const Text('重试'),
+                label: Text(context.l10n.text('retry')),
               ),
             ],
           ),
@@ -484,8 +510,9 @@ class _MockSession extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return ColoredBox(
-      color: DshColors.surface,
+      color: context.dsh.surface,
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(28),
@@ -496,26 +523,26 @@ class _MockSession extends StatelessWidget {
                 width: 54,
                 height: 54,
                 decoration: BoxDecoration(
-                  color: DshColors.accentSoft,
+                  color: context.dsh.accentSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.check_rounded,
-                  color: DshColors.accent,
+                  color: context.dsh.accent,
                   size: 30,
                 ),
               ),
               const SizedBox(height: 18),
               Text(
-                'Mock Relay 已连接',
+                l10n.text('mockConnected'),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
               Text(
-                '切换到真实 Relay 构建后，此处将加载电脑上的 DSH Web UI。',
+                l10n.text('mockSessionHelp'),
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: DshColors.secondaryText,
+                  color: context.dsh.secondaryText,
                 ),
               ),
             ],

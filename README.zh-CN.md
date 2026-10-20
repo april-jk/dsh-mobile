@@ -1,6 +1,6 @@
 # DSH Remote Mobile
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[English](README.md) | [Polski](README.pl.md) | [简体中文](README.zh-CN.md)
 
 > **非官方社区项目：** 本项目由社区独立开发和维护，未经 DeepSeek 审核、推荐或支持。
 
@@ -24,6 +24,10 @@ APK 的应用 ID 是 `io.github.apriljk.dshremote`。安装前请使用同一 Re
 - Flutter 3.38.10（Dart 3.10）
 - iOS 14 或更高版本
 - Android 8.0（API 26）或更高版本
+
+## 语言与主题
+
+应用界面支持英语、波兰语和简体中文。默认跟随手机系统语言，不支持时回退到英语。可在“设置”中选择语言，并切换浅色或深色主题；两项选择都会在下次启动时保留。登录邮箱默认隐藏，点击眼睛按钮仅临时显示。语言选择不会更改账号、配对或保存的登录凭据。设备名称、路径、URL、协议标识和错误码不会翻译。
 
 ## 使用生产 Relay 运行
 

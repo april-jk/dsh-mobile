@@ -14,7 +14,7 @@ class AuthState {
     required this.status,
     this.email,
     this.busy = false,
-    this.errorMessage,
+    this.error,
   });
 
   const AuthState.initializing() : this(status: AuthStatus.initializing);
@@ -22,20 +22,22 @@ class AuthState {
   final AuthStatus status;
   final String? email;
   final bool busy;
-  final String? errorMessage;
+
+  /// Raw failure, localized only when a widget presents it.
+  final Object? error;
 
   AuthState copyWith({
     AuthStatus? status,
     String? email,
     bool? busy,
-    String? errorMessage,
+    Object? error,
     bool clearError = false,
   }) {
     return AuthState(
       status: status ?? this.status,
       email: email ?? this.email,
       busy: busy ?? this.busy,
-      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+      error: clearError ? null : error ?? this.error,
     );
   }
 }
@@ -80,7 +82,7 @@ class AuthController extends StateNotifier<AuthState> {
     if (!mounted) return;
     state = const AuthState(
       status: AuthStatus.unauthenticated,
-      errorMessage: '登录已过期，请重新登录。',
+      error: ApiException('invalid_refresh_token'),
     );
   }
 
@@ -124,7 +126,7 @@ class AuthController extends StateNotifier<AuthState> {
       state = AuthState(
         status: AuthStatus.unauthenticated,
         busy: false,
-        errorMessage: userMessage(error),
+        error: error,
       );
       return false;
     }

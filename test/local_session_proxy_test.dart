@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:dsh_mobile/features/session/local_session_proxy.dart';
 import 'package:dsh_mobile/features/session/secure_tunnel.dart';
+import 'package:dsh_mobile/features/session/session_target.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -58,6 +59,38 @@ void main() {
     expect(response.statusCode, 201);
     expect(await utf8.decoder.bind(response).join(), 'created');
   });
+
+  test(
+    'bootstrap redirect preserves the requested language and theme',
+    () async {
+      final tunnel = _FakeTunnel();
+      final proxy = await LocalSessionProxy.startWithTunnel(
+        tunnel,
+        capability: 'test-capability',
+      );
+      final client = HttpClient();
+      addTearDown(() async {
+        client.close(force: true);
+        await proxy.close();
+      });
+
+      final start = sessionTargetUrl(
+        proxy.startUrl,
+        '/dsh-mobile/files?lang=pl&theme=dark',
+      );
+      final request = await client.getUrl(start);
+      request.followRedirects = false;
+      final response = await request.close();
+      await response.drain<void>();
+      expect(response.statusCode, HttpStatus.found);
+
+      final location = Uri.parse(response.headers.value('location')!);
+      expect(location.path, '/dsh-mobile/files');
+      expect(location.queryParameters['lang'], 'pl');
+      expect(location.queryParameters['theme'], 'dark');
+      expect(location.queryParameters.containsKey('bootstrap'), isFalse);
+    },
+  );
 
   test('forwards WebSocket text frames in both directions', () async {
     final tunnel = _FakeTunnel();

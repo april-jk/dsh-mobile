@@ -23,6 +23,19 @@ void main() {
     expect(payload.e2eeKey, hasLength(43));
   });
 
+  test('parses an HTTP browser pairing link from a LAN Relay', () {
+    final payload = parsePairPayload(
+      'http://192.0.2.10:8787/app/#/pair?code=482913&key=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8',
+    );
+
+    expect(payload.code, '482913');
+    expect(payload.relay, Uri.parse('http://192.0.2.10:8787'));
+    expect(
+      relayMatches(payload.relay, Uri.parse('http://192.0.2.10:8787')),
+      isTrue,
+    );
+  });
+
   test('rejects a manual six-digit code', () {
     expect(() => parsePairPayload('482913'), throwsA(isA<ApiException>()));
   });

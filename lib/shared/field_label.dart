@@ -15,7 +15,7 @@ class FieldLabel extends StatelessWidget {
         text,
         style: Theme.of(
           context,
-        ).textTheme.labelLarge?.copyWith(color: DshColors.text),
+        ).textTheme.labelLarge?.copyWith(color: context.dsh.text),
       ),
     );
   }

@@ -1,8 +1,8 @@
+import '../../l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/api_exception.dart';
 import '../../core/theme.dart';
 import '../../data/device_key_store.dart';
 import '../../data/relay_service.dart';
@@ -37,17 +37,18 @@ class _DeviceListPageState extends ConsumerState<DeviceListPage> {
   @override
   Widget build(BuildContext context) {
     final devices = ref.watch(deviceControllerProvider);
+    final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
         title: const BrandMark(compact: true),
         actions: [
           IconButton(
-            tooltip: '添加电脑',
+            tooltip: l10n.text('addComputer'),
             onPressed: _openPairing,
             icon: const Icon(Icons.add_rounded),
           ),
           IconButton(
-            tooltip: '设置',
+            tooltip: l10n.text('settings'),
             onPressed: () => Navigator.of(context).push<void>(
               MaterialPageRoute(builder: (_) => const SettingsPage()),
             ),
@@ -61,21 +62,21 @@ class _DeviceListPageState extends ConsumerState<DeviceListPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(height: 1, color: DshColors.border),
+            Container(height: 1, color: context.dsh.border),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '我的电脑',
+                    l10n.text('myComputers'),
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '选择一台电脑打开远程 DeepSeek Harness。',
+                    l10n.text('devicesIntro'),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: DshColors.secondaryText,
+                      color: context.dsh.secondaryText,
                     ),
                   ),
                 ],
@@ -85,7 +86,7 @@ class _DeviceListPageState extends ConsumerState<DeviceListPage> {
               child: devices.when(
                 loading: () => const _DeviceSkeleton(),
                 error: (error, _) => _DeviceError(
-                  message: userMessage(error),
+                  message: l10n.error(error),
                   onRetry: ref.read(deviceControllerProvider.notifier).load,
                 ),
                 data: (items) => RefreshIndicator(
@@ -123,54 +124,38 @@ class _DeviceListPageState extends ConsumerState<DeviceListPage> {
   }
 
   Future<void> _rename(Device device) async {
-    final controller = TextEditingController(text: device.name);
+    final l10n = context.l10n;
+    final currentName = l10n.deviceName(device);
     final name = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('重命名电脑'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 60,
-          decoration: const InputDecoration(labelText: '电脑名称'),
-          onSubmitted: (value) => Navigator.pop(context, value.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('保存'),
-          ),
-        ],
-      ),
+      builder: (context) => _RenameComputerDialog(initialName: currentName),
     );
-    controller.dispose();
-    if (name == null || name.isEmpty || name == device.name) return;
+    if (name == null || name.isEmpty || name == currentName) return;
     try {
       await ref.read(deviceControllerProvider.notifier).rename(device.id, name);
     } catch (error) {
-      if (mounted) _showError(userMessage(error));
+      if (mounted) _showError(l10n.error(error));
     }
   }
 
   Future<void> _unbind(Device device) async {
+    final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('移除配对'),
-        content: Text('移除与 ${device.name} 的配对后，需要回到电脑前重新扫码。'),
+        title: Text(l10n.text('removePairing')),
+        content: Text(
+          l10n.text('removePairingBody', {'name': l10n.deviceName(device)}),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(l10n.text('cancel')),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: DshColors.danger),
+            style: FilledButton.styleFrom(backgroundColor: context.dsh.danger),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('移除配对'),
+            child: Text(l10n.text('removePairing')),
           ),
         ],
       ),
@@ -179,7 +164,7 @@ class _DeviceListPageState extends ConsumerState<DeviceListPage> {
     try {
       await ref.read(deviceControllerProvider.notifier).unbind(device.id);
     } catch (error) {
-      if (mounted) _showError(userMessage(error));
+      if (mounted) _showError(l10n.error(error));
     }
   }
 
@@ -190,9 +175,11 @@ class _DeviceListPageState extends ConsumerState<DeviceListPage> {
   }
 
   Future<void> _openBrowser(Device device) async {
+    final l10n = context.l10n;
     final key = await ref.read(deviceKeyStoreProvider).read(device.id);
+    if (!mounted) return;
     if (key == null) {
-      _showError('这台电脑的加密密钥不在当前手机中，请重新配对。');
+      _showError(l10n.text('missingKey'));
       return;
     }
     final relay = ref.read(appConfigProvider).relayBaseUrl;
@@ -202,8 +189,9 @@ class _DeviceListPageState extends ConsumerState<DeviceListPage> {
       fragment:
           '/web-pair?device=${Uri.encodeComponent(device.id)}&key=${Uri.encodeComponent(key)}',
     );
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      _showError('无法打开浏览器，请稍后重试。');
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      _showError(l10n.text('browserFailed'));
     }
   }
 }
@@ -225,16 +213,18 @@ class _DeviceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (color, status) = switch (device.availability) {
-      DeviceAvailability.online => (DshColors.success, '在线'),
-      DeviceAvailability.dshOffline => (DshColors.warning, 'DSH 未启动'),
-      DeviceAvailability.offline => (DshColors.mutedText, '电脑离线'),
+    final l10n = context.l10n;
+    final palette = context.dsh;
+    final (color, statusKey) = switch (device.availability) {
+      DeviceAvailability.online => (palette.success, 'online'),
+      DeviceAvailability.dshOffline => (palette.warning, 'dshOffline'),
+      DeviceAvailability.offline => (palette.mutedText, 'computerOffline'),
     };
     return Material(
-      color: DshColors.surface,
+      color: palette.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        side: const BorderSide(color: DshColors.border),
+        side: BorderSide(color: palette.border),
       ),
       child: InkWell(
         onTap: onOpen,
@@ -247,13 +237,10 @@ class _DeviceTile extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: DshColors.softSurface,
+                  color: palette.softSurface,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
-                  Icons.computer_outlined,
-                  color: DshColors.navy,
-                ),
+                child: Icon(Icons.computer_outlined, color: palette.navy),
               ),
               const SizedBox(width: 13),
               Expanded(
@@ -261,7 +248,7 @@ class _DeviceTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      device.name,
+                      l10n.deviceName(device),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium,
@@ -279,7 +266,7 @@ class _DeviceTile extends StatelessWidget {
                         ),
                         const SizedBox(width: 7),
                         Text(
-                          status,
+                          l10n.text(statusKey),
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
                                 color: color,
@@ -289,7 +276,7 @@ class _DeviceTile extends StatelessWidget {
                         if (device.lastSeenAt != null) ...[
                           const SizedBox(width: 8),
                           Text(
-                            _lastSeen(device.lastSeenAt!),
+                            _lastSeen(context, device.lastSeenAt!),
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
@@ -299,7 +286,7 @@ class _DeviceTile extends StatelessWidget {
                 ),
               ),
               PopupMenuButton<String>(
-                tooltip: '电脑操作',
+                tooltip: l10n.text('computerActions'),
                 onSelected: (value) {
                   switch (value) {
                     case 'browser':
@@ -310,10 +297,19 @@ class _DeviceTile extends StatelessWidget {
                       onUnbind();
                   }
                 },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'browser', child: Text('在浏览器中使用')),
-                  PopupMenuItem(value: 'rename', child: Text('重命名')),
-                  PopupMenuItem(value: 'unbind', child: Text('移除配对')),
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: 'browser',
+                    child: Text(l10n.text('useBrowser')),
+                  ),
+                  PopupMenuItem(
+                    value: 'rename',
+                    child: Text(l10n.text('rename')),
+                  ),
+                  PopupMenuItem(
+                    value: 'unbind',
+                    child: Text(l10n.text('removePairing')),
+                  ),
                 ],
               ),
             ],
@@ -323,12 +319,12 @@ class _DeviceTile extends StatelessWidget {
     );
   }
 
-  String _lastSeen(DateTime time) {
+  String _lastSeen(BuildContext context, DateTime time) {
     final difference = DateTime.now().difference(time);
-    if (difference.inMinutes < 1) return '刚刚';
-    if (difference.inHours < 1) return '${difference.inMinutes} 分钟前';
-    if (difference.inDays < 1) return '${difference.inHours} 小时前';
-    return '${time.month} 月 ${time.day} 日';
+    if (difference.inDays >= 1) {
+      return MaterialLocalizations.of(context).formatShortDate(time.toLocal());
+    }
+    return context.l10n.relativeTime(time);
   }
 }
 
@@ -344,7 +340,7 @@ class _DeviceSkeleton extends StatelessWidget {
       itemBuilder: (_, _) => Container(
         height: 74,
         decoration: BoxDecoration(
-          color: DshColors.softSurface,
+          color: context.dsh.softSurface,
           borderRadius: BorderRadius.circular(10),
         ),
       ),
@@ -366,10 +362,10 @@ class _DeviceError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.cloud_off_outlined,
               size: 38,
-              color: DshColors.secondaryText,
+              color: context.dsh.secondaryText,
             ),
             const SizedBox(height: 14),
             Text(message, textAlign: TextAlign.center),
@@ -377,7 +373,7 @@ class _DeviceError extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),
-              label: const Text('重试'),
+              label: Text(context.l10n.text('retry')),
             ),
           ],
         ),
@@ -393,36 +389,85 @@ class _EmptyDevices extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(28),
       children: [
         const SizedBox(height: 70),
-        const Icon(
+        Icon(
           Icons.add_to_queue_outlined,
           size: 44,
-          color: DshColors.secondaryText,
+          color: context.dsh.secondaryText,
         ),
         const SizedBox(height: 16),
         Text(
-          '还没有绑定电脑',
+          l10n.text('noComputers'),
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 8),
         Text(
-          '在电脑上运行 npx @deepseek-ai/dsh web，然后扫描 dsh-mobile 显示的配对码。',
+          l10n.text('noComputersIntro'),
           textAlign: TextAlign.center,
           style: Theme.of(
             context,
-          ).textTheme.bodyMedium?.copyWith(color: DshColors.secondaryText),
+          ).textTheme.bodyMedium?.copyWith(color: context.dsh.secondaryText),
         ),
         const SizedBox(height: 24),
         FilledButton.icon(
           onPressed: onPair,
           icon: const Icon(Icons.qr_code_scanner_rounded),
-          label: const Text('扫码配对'),
+          label: Text(l10n.text('scanPair')),
         ),
+      ],
+    );
+  }
+}
+
+/// Owns the text controller for its whole route lifetime so the dialog
+/// subtree never reads a controller that was disposed during the pop
+/// animation.
+class _RenameComputerDialog extends StatefulWidget {
+  const _RenameComputerDialog({required this.initialName});
+
+  final String initialName;
+
+  @override
+  State<_RenameComputerDialog> createState() => _RenameComputerDialogState();
+}
+
+class _RenameComputerDialogState extends State<_RenameComputerDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialName,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() => Navigator.pop(context, _controller.text.trim());
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AlertDialog(
+      title: Text(l10n.text('renameComputer')),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLength: 60,
+        decoration: InputDecoration(labelText: l10n.text('computerName')),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.text('cancel')),
+        ),
+        FilledButton(onPressed: _submit, child: Text(l10n.text('save'))),
       ],
     );
   }

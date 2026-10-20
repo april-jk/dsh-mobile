@@ -9,6 +9,7 @@ class BrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.dsh;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -16,7 +17,7 @@ class BrandMark extends StatelessWidget {
           width: compact ? 26 : 32,
           height: compact ? 26 : 32,
           decoration: BoxDecoration(
-            color: DshColors.navy,
+            color: palette.brand,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
@@ -32,7 +33,7 @@ class BrandMark extends StatelessWidget {
             fontFamily: 'Montserrat',
             fontSize: compact ? 18 : 22,
             fontWeight: FontWeight.w700,
-            color: DshColors.text,
+            color: palette.text,
             letterSpacing: 0,
           ),
         ),
@@ -40,16 +41,16 @@ class BrandMark extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
           decoration: BoxDecoration(
-            color: DshColors.text,
+            color: palette.text,
             borderRadius: BorderRadius.circular(4),
           ),
-          child: const Text(
+          child: Text(
             'HARNESS',
             style: TextStyle(
               fontFamily: 'FragmentMono',
               fontSize: 9,
               height: 1,
-              color: Colors.white,
+              color: palette.canvas,
               letterSpacing: 0,
             ),
           ),

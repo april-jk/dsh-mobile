@@ -37,7 +37,14 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(controller.state.status, AuthStatus.unauthenticated);
-    expect(controller.state.errorMessage, '登录已过期，请重新登录。');
+    expect(
+      controller.state.error,
+      isA<ApiException>().having(
+        (ApiException error) => error.code,
+        'code',
+        'invalid_refresh_token',
+      ),
+    );
     expect(await store.readRefreshToken(), isNull);
   });
 }

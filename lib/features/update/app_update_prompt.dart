@@ -1,3 +1,4 @@
+import '../../l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -75,15 +76,15 @@ Future<void> checkForAppUpdate(BuildContext context, WidgetRef ref) async {
     if (result == null || result.requirement == AppUpdateRequirement.none) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('当前已是最新版本。')));
+      ).showSnackBar(SnackBar(content: Text(context.l10n.text('upToDate'))));
       return;
     }
     await showAppUpdateDialog(context, result);
   } catch (_) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('暂时无法检查更新，请稍后重试。')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.text('updateCheckFailed'))),
+    );
   }
 }
 
@@ -95,54 +96,64 @@ Future<void> showAppUpdateDialog(
   await showDialog<void>(
     context: context,
     barrierDismissible: !required,
-    builder: (dialogContext) => PopScope(
-      canPop: !required,
-      child: AlertDialog(
-        scrollable: true,
-        title: Text(required ? '需要更新' : '发现新版本'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '当前 ${update.installed.version}  ·  最新 ${update.policy.latestVersion}',
+    builder: (dialogContext) {
+      final l10n = dialogContext.l10n;
+      return PopScope(
+        canPop: !required,
+        child: AlertDialog(
+          scrollable: true,
+          title: Text(
+            required
+                ? l10n.text('updateRequired')
+                : l10n.text('updateAvailable'),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.text('versionComparison', {
+                  'installed': update.installed.version,
+                  'latest': update.policy.latestVersion,
+                }),
+              ),
+              if (update.policy.releaseNotes?.trim().isNotEmpty == true) ...[
+                const SizedBox(height: 14),
+                Text(update.policy.releaseNotes!.trim()),
+              ],
+              if (required) ...[
+                const SizedBox(height: 14),
+                Text(l10n.text('unsupportedVersion')),
+              ],
+            ],
+          ),
+          actions: [
+            if (!required)
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(l10n.text('later')),
+              ),
+            FilledButton.icon(
+              onPressed: () async {
+                final opened = await launchUrl(
+                  update.policy.downloadUrl!,
+                  mode: LaunchMode.externalApplication,
+                );
+                if (!dialogContext.mounted) return;
+                if (!opened) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    SnackBar(content: Text(l10n.text('downloadFailed'))),
+                  );
+                } else if (!required) {
+                  Navigator.of(dialogContext).pop();
+                }
+              },
+              icon: const Icon(Icons.system_update_alt_rounded),
+              label: Text(l10n.text('updateNow')),
             ),
-            if (update.policy.releaseNotes?.trim().isNotEmpty == true) ...[
-              const SizedBox(height: 14),
-              Text(update.policy.releaseNotes!.trim()),
-            ],
-            if (required) ...[
-              const SizedBox(height: 14),
-              const Text('当前版本已不再支持，更新后才能继续使用。'),
-            ],
           ],
         ),
-        actions: [
-          if (!required)
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('稍后'),
-            ),
-          FilledButton.icon(
-            onPressed: () async {
-              final opened = await launchUrl(
-                update.policy.downloadUrl!,
-                mode: LaunchMode.externalApplication,
-              );
-              if (!dialogContext.mounted) return;
-              if (!opened) {
-                ScaffoldMessenger.of(
-                  dialogContext,
-                ).showSnackBar(const SnackBar(content: Text('无法打开下载页面。')));
-              } else if (!required) {
-                Navigator.of(dialogContext).pop();
-              }
-            },
-            icon: const Icon(Icons.system_update_alt_rounded),
-            label: const Text('立即更新'),
-          ),
-        ],
-      ),
-    ),
+      );
+    },
   );
 }

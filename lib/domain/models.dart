@@ -21,6 +21,7 @@ class Device {
     required this.online,
     required this.dshStatus,
     this.lastSeenAt,
+    this.displayNameKey,
   });
 
   factory Device.fromJson(Map<String, dynamic> json) {
@@ -31,12 +32,16 @@ class Device {
     } else if (rawLastSeen is String) {
       lastSeen = DateTime.tryParse(rawLastSeen);
     }
+    final rawName = (json['name'] as String?)?.trim();
     return Device(
       id: json['id'] as String,
-      name: json['name'] as String? ?? 'DSH Computer',
+      name: rawName ?? '',
       online: json['online'] as bool? ?? false,
       dshStatus: json['dshStatus'] as String? ?? 'offline',
       lastSeenAt: lastSeen,
+      displayNameKey: rawName == null || rawName.isEmpty
+          ? 'defaultComputer'
+          : null,
     );
   }
 
@@ -45,6 +50,9 @@ class Device {
   final bool online;
   final String dshStatus;
   final DateTime? lastSeenAt;
+
+  /// Stable catalog key for app-authored placeholder names, never user data.
+  final String? displayNameKey;
 
   DeviceAvailability get availability {
     if (!online) return DeviceAvailability.offline;
@@ -58,6 +66,8 @@ class Device {
     online: online,
     dshStatus: dshStatus,
     lastSeenAt: lastSeenAt,
+    // A user-assigned name always wins over the placeholder catalog key.
+    displayNameKey: name == null ? displayNameKey : null,
   );
 }
 

@@ -11,10 +11,7 @@ PairPayload parsePairPayload(String raw) {
     }
     return _parseWebLink(Uri.parse(trimmed));
   } catch (_) {
-    throw const ApiException(
-      'e2ee_pairing_required',
-      message: '请扫描电脑上的加密配对二维码。',
-    );
+    throw const ApiException('e2ee_pairing_required');
   }
 }
 
@@ -36,7 +33,9 @@ PairPayload _parseJsonPayload(Map<String, dynamic> json) {
 }
 
 PairPayload _parseWebLink(Uri uri) {
-  if (uri.scheme != 'https' ||
+  // Plain HTTP is allowed for laptop-hosted Relays in development builds; a
+  // release app configured with HTTPS still rejects it through relayMatches.
+  if (!{'http', 'https'}.contains(uri.scheme) ||
       uri.host.isEmpty ||
       uri.path != '/app/' ||
       !uri.fragment.startsWith('/pair?')) {
